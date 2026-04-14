@@ -1,0 +1,11 @@
+{% extends 'cinema/base.html' %}
+{% block title %}Вход{% endblock %}
+{% block content %}
+<h1>🔐 Вход в систему</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn">Войти</button>
+</form>
+<p>Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
+{% endblock %}

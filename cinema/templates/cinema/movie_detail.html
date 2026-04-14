@@ -1,0 +1,117 @@
+{% extends 'cinema/base.html' %}
+{% block title %}{{ movie.title }}{% endblock %}
+{% block content %}
+
+<div style="display: flex; gap: 30px; flex-wrap: wrap;">
+    <!-- Левая колонка - постер -->
+    <div style="flex: 0 0 300px;">
+        {% if movie.poster %}
+            <img src="{{ movie.poster.url }}" alt="{{ movie.title }}" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+        {% else %}
+            <div style="width: 100%; height: 450px; background: #2c3e50; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 80px; color: white;">🎬</span>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Правая колонка - информация о фильме -->
+    <div style="flex: 1;">
+        <h1 style="margin-top: 0;">{{ movie.title }}</h1>
+
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+            <p><strong>🎬 Режиссёр:</strong>
+                {% if movie.director %}
+                    <a href="{% url 'director_detail' movie.director.id %}">{{ movie.director.name }}</a>
+                {% else %}
+                    Не указан
+                {% endif %}
+            </p>
+            <p><strong>📅 Год выпуска:</strong> {{ movie.release_year }}</p>
+            <p><strong>⏱️ Длительность:</strong> {{ movie.duration_min }} мин</p>
+            <p><strong>⭐ Рейтинг:</strong> {{ movie.average_rating|floatformat:1 }}/5
+                <span style="color: #888; font-size: 14px;">(на основе {{ movie.reviews.count }} отзывов)</span>
+            </p>
+            <p><strong>🎭 Жанры:</strong>
+                {% for genre in movie.genres.all %}
+                    {{ genre.name }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </p>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <h3>📖 Описание</h3>
+            <p style="line-height: 1.6;">{{ movie.description }}</p>
+        </div>
+    </div>
+</div>
+
+<hr style="margin: 30px 0;">
+
+<h2>🎫 Ближайшие сеансы</h2>
+{% if sessions %}
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr>
+                <th style="padding: 10px; background: #2c3e50; color: white;">Дата и время</th>
+                <th style="padding: 10px; background: #2c3e50; color: white;">Зал</th>
+                <th style="padding: 10px; background: #2c3e50; color: white;">Цена</th>
+                <th style="padding: 10px; background: #2c3e50; color: white;">Свободно мест</th>
+                <th style="padding: 10px; background: #2c3e50; color: white;">Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in sessions %}
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">{{ session.start_time|date:"d.m.Y H:i" }}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">Зал {{ session.hall.number }}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">{{ session.price }} ₽</td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">{{ session.available_seats }}/{{ session.hall.capacity }}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">
+                    <a href="{% url 'session_detail' session.id %}" class="btn btn-success">Забронировать</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>Нет запланированных сеансов</p>
+{% endif %}
+
+<h2 style="margin-top: 40px;">📝 Отзывы</h2>
+{% if user.is_authenticated and not user_review %}
+    <a href="{% url 'review_create' movie.id %}" class="btn btn-success" style="margin-bottom: 20px;">➕ Оставить отзыв</a>
+{% endif %}
+
+{% if reviews %}
+    {% for review in reviews %}
+    <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 15px 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <p><strong>{{ review.user.username }}</strong> —
+                {% for i in "12345"|make_list %}
+                    {% if forloop.counter <= review.rating %}⭐{% else %}☆{% endif %}
+                {% endfor %}
+            </p>
+            <p style="color: #888; font-size: 12px;">{{ review.created_at|date:"d.m.Y H:i" }}</p>
+        </div>
+        <p style="margin-top: 10px;">{{ review.comment }}</p>
+        {% if user == review.user or user.is_staff %}
+            <div style="margin-top: 10px;">
+                <a href="{% url 'review_edit' review.id %}" class="btn btn-warning" style="padding: 4px 8px; font-size: 12px;">✏️ Редактировать</a>
+                <a href="{% url 'review_delete' review.id %}" class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="return confirm('Удалить отзыв?')">🗑️ Удалить</a>
+            </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+{% else %}
+    <p>Пока нет отзывов. Будьте первым!</p>
+{% endif %}
+
+<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+    <a href="{% url 'movie_list' %}" class="btn">← Назад к списку фильмов</a>
+    {% if user.is_staff %}
+        <a href="{% url 'movie_edit' movie.id %}" class="btn btn-warning">✏️ Редактировать фильм</a>
+        <a href="{% url 'movie_delete' movie.id %}" class="btn btn-danger" onclick="return confirm('Точно удалить фильм?')">🗑️ Удалить фильм</a>
+    {% endif %}
+</div>
+
+{% endblock %}

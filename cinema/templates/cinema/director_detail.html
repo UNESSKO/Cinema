@@ -1,0 +1,58 @@
+{% extends 'cinema/base.html' %}
+{% load static %}
+{% block title %}{{ director.name }}{% endblock %}
+{% block content %}
+<div class="director-detail">
+    <div class="director-detail-photo">
+        {% if director.photo %}
+            <img src="{{ director.photo.url }}" alt="{{ director.name }}" class="director-detail-photo-img">
+        {% else %}
+            <div class="director-photo-placeholder" style="width: 250px; height: 250px;">
+                <span style="font-size: 100px;">🎬</span>
+            </div>
+        {% endif %}
+    </div>
+    <div class="director-detail-info">
+        <h1>{{ director.name }}</h1>
+        {% if director.birth_date %}
+            <p><strong>📅 Дата рождения:</strong> {{ director.birth_date|date:"d.m.Y" }}</p>
+        {% endif %}
+        {% if director.birth_place %}
+            <p><strong>📍 Место рождения:</strong> {{ director.birth_place }}</p>
+        {% endif %}
+        {% if director.biography %}
+            <p><strong>📖 Биография:</strong></p>
+            <p>{{ director.biography|linebreaks }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<h2 style="margin-top: 30px;">🎥 Фильмы режиссёра</h2>
+{% if movies %}
+    <div class="movies-grid">
+        {% for movie in movies %}
+        <div class="movie-card">
+            {% if movie.poster %}
+                <img src="{{ movie.poster.url }}" alt="{{ movie.title }}" class="movie-poster">
+            {% else %}
+                <div class="movie-poster-placeholder">
+                    <span>🎬</span>
+                </div>
+            {% endif %}
+            <h4><a href="{% url 'movie_detail' movie.id %}">{{ movie.title }}</a></h4>
+            <p>{{ movie.release_year }} | ⭐ {{ movie.rating }}</p>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p>У этого режиссёра пока нет фильмов.</p>
+{% endif %}
+
+<div style="margin-top: 30px;">
+    <a href="{% url 'director_list' %}" class="btn">← Назад к списку режиссёров</a>
+    {% if user.is_staff %}
+        <a href="{% url 'director_edit' director.id %}" class="btn btn-warning">✏️ Редактировать</a>
+        <a href="{% url 'director_delete' director.id %}" class="btn btn-danger" onclick="return confirm('Точно удалить режиссёра?')">🗑️ Удалить</a>
+    {% endif %}
+</div>
+{% endblock %}

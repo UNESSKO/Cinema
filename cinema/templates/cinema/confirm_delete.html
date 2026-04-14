@@ -1,0 +1,37 @@
+{% extends 'cinema/base.html' %}
+{% load static %}
+{% block title %}Удаление {{ type_name }}{% endblock %}
+{% block content %}
+<div class="delete-confirm">
+    <h1>⚠️ Подтверждение удаления</h1>
+
+    {% if can_delete %}
+        <p>
+            Вы действительно хотите удалить {{ type_name }}
+            <strong style="color: #e74c3c;">"{{ object }}"</strong>?
+        </p>
+
+        <form method="post" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">🗑️ Да, удалить</button>
+            {% if cancel_id %}
+                <a href="{% url cancel_url cancel_id %}" class="btn">❌ Отмена</a>
+            {% else %}
+                <a href="{% url cancel_url %}" class="btn">❌ Отмена</a>
+            {% endif %}
+        </form>
+    {% else %}
+        <div class="delete-warning">
+            <strong>⛔ Невозможно удалить {{ type_name }}!</strong><br><br>
+            {{ block_reason }}
+        </div>
+        <div style="margin-top: 20px;">
+            {% if cancel_id %}
+                <a href="{% url cancel_url cancel_id %}" class="btn">← Назад</a>
+            {% else %}
+                <a href="{% url cancel_url %}" class="btn">← Назад</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends 'cinema/base.html' %}
+{% block title %}Бронирование - {{ session.movie.title }}{% endblock %}
+{% block content %}
+
+<h1>🎫 Бронирование билетов</h1>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="messages {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+<div style="background: #f0f0f0; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+    <h2>{{ session.movie.title }}</h2>
+    <p><strong>📅 Дата и время:</strong> {{ session.start_time|date:"d.m.Y H:i" }}</p>
+    <p><strong>🏢 Зал:</strong> {{ session.hall.number }}</p>
+    <p><strong>💰 Цена билета:</strong> {{ session.price }} ₽</p>
+    <p><strong>💺 Свободных мест:</strong> <span id="available-seats">{{ session.available_seats }}</span>/{{ session.hall.capacity }}</p>
+</div>
+
+<hr>
+
+<h3>Схема зала</h3>
+<p style="text-align: center; margin: 10px 0; padding: 10px; background: #2c3e50; color: white; border-radius: 8px;">🎬 ЭКРАН 🎬</p>
+
+<div style="overflow-x: auto;">
+    <table style="border-collapse: collapse; margin: 20px auto;">
+        <thead>
+            <tr>
+                <th style="width: 60px; background: #2c3e50; color: white;">Ряд\Место</th>
+                {% for seat in "123456789012345"|make_list %}
+                    <th style="width: 40px; text-align: center; background: #2c3e50; color: white;">{{ forloop.counter }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in "1234567890"|make_list %}
+            <tr id="row_{{ forloop.counter }}">
+                <th style="background: #2c3e50; color: white;">{{ forloop.counter }}</th>
+                {% for seat in "123456789012345"|make_list %}
+                    {% with row_num=forloop.parentloop.counter|stringformat:"s" seat_num=forloop.counter|stringformat:"s" %}
+                        {% with seat_key=row_num|add:"_"|add:seat_num %}
+                            {# ПРОВЕРКА: ищем seat_key в списке occupied_seats #}
+                            {% if seat_key in occupied_seats %}
+                                <td id="seat_{{ row_num }}_{{ seat_num }}"
+                                    data-row="{{ row_num }}"
+                                    data-seat="{{ seat_num }}"
+                                    class="seat occupied"
+                                    style="width: 40px; height: 40px; text-align: center; border: 1px solid #ddd;
+                                           background: #e74c3c; color: white; cursor: not-allowed;">
+                                    ❌
+                                </td>
+                            {% else %}
+                                <td id="seat_{{ row_num }}_{{ seat_num }}"
+                                    data-row="{{ row_num }}"
+                                    data-seat="{{ seat_num }}"
+                                    class="seat free"
+                                    style="width: 40px; height: 40px; text-align: center; border: 1px solid #ddd;
+                                           background: #2ecc71; color: white; cursor: pointer;">
+                                    ○
+                                </td>
+                            {% endif %}
+                        {% endwith %}
+                    {% endwith %}
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div style="text-align: center; margin: 10px 0;">
+    <p>🔴 <span style="color: #e74c3c; font-weight: bold;">Красный (❌)</span> - занято |
+       🟢 <span style="color: #2ecc71; font-weight: bold;">Зелёный (○)</span> - свободно |
+       🟡 <span style="color: #f39c12; font-weight: bold;">Жёлтый (●)</span> - выбрано</p>
+</div>
+
+<hr>
+
+<h3>Выбранные места</h3>
+<div id="selected-seats-list" style="min-height: 50px; margin-bottom: 15px;">
+    <p style="color: #888;">Ничего не выбрано</p>
+</div>
+
+<form id="booking-form" method="post" style="display: none;">
+    {% csrf_token %}
+    <input type="hidden" name="selected_seats" id="selected-seats-input">
+    <button type="submit" class="btn btn-success">✅ Забронировать выбранные места</button>
+</form>
+
+<button id="clear-selection" class="btn btn-warning" style="display: none;">🗑️ Очистить выбор</button>
+<a href="{% url 'session_list' %}" class="btn">📅 Назад к сеансам</a>
+<a href="{% url 'movie_detail' session.movie.id %}" class="btn">🎬 Назад к фильму</a>
+
+<div style="margin-top: 20px; padding: 10px; background: #e8f4fd; border-radius: 8px;">
+    <p><strong>ℹ️ Информация:</strong></p>
+    <ul>
+        <li>Нажмите на <span style="color: #2ecc71; font-weight: bold;">зелёное место (○)</span>, чтобы выбрать его.</li>
+        <li>Можно выбрать несколько мест одновременно.</li>
+        <li>После выбора нажмите кнопку "Забронировать выбранные места".</li>
+        <li><span style="color: #e74c3c; font-weight: bold;">Красные места (❌)</span> уже заняты и недоступны для выбора.</li>
+        <li>Вы можете отменить бронирование в разделе <a href="{% url 'my_bookings' %}">"Мои бронирования"</a>.</li>
+    </ul>
+</div>
+
+<script>
+    // Получаем список занятых мест из HTML
+    const occupiedSeatsFromHTML = new Set();
+    document.querySelectorAll('.seat.occupied').forEach(seat => {
+        const row = seat.dataset.row;
+        const seatNum = seat.dataset.seat;
+        occupiedSeatsFromHTML.add(`${row}_${seatNum}`);
+    });
+
+    // Хранилище выбранных мест
+    let selectedSeats = new Set();
+
+    // Получаем все свободные места
+    const freeSeats = document.querySelectorAll('.seat.free');
+    const selectedListDiv = document.getElementById('selected-seats-list');
+    const bookingForm = document.getElementById('booking-form');
+    const clearBtn = document.getElementById('clear-selection');
+    const selectedSeatsInput = document.getElementById('selected-seats-input');
+    const availableSeatsSpan = document.getElementById('available-seats');
+
+    // Отладка
+    console.log('=== ОТЛАДКА В БРАУЗЕРЕ ===');
+    console.log('Занятые места (из HTML):', occupiedSeatsFromHTML.size);
+    console.log('Свободные места:', freeSeats.length);
+    console.log('Всего мест:', freeSeats.length + occupiedSeatsFromHTML.size);
+
+    if (occupiedSeatsFromHTML.size > 0) {
+        console.log('Пример занятых мест:');
+        Array.from(occupiedSeatsFromHTML).slice(0, 5).forEach(seat => {
+            console.log('  -', seat);
+        });
+    } else {
+        console.error('ВНИМАНИЕ: Занятые места не найдены в HTML!');
+        console.log('Проверьте, что переменная occupied_seats передаётся в шаблон');
+    }
+
+    function updateDisplay() {
+        freeSeats.forEach(seat => {
+            const row = seat.dataset.row;
+            const seatNum = seat.dataset.seat;
+            const seatKey = `${row}_${seatNum}`;
+
+            if (selectedSeats.has(seatKey)) {
+                seat.style.background = '#f39c12';
+                seat.style.color = 'white';
+                seat.innerHTML = '●';
+            } else {
+                seat.style.background = '#2ecc71';
+                seat.style.color = 'white';
+                seat.innerHTML = '○';
+            }
+        });
+
+        if (selectedSeats.size === 0) {
+            selectedListDiv.innerHTML = '<p style="color: #888;">Ничего не выбрано</p>';
+            bookingForm.style.display = 'none';
+            clearBtn.style.display = 'none';
+        } else {
+            let listHtml = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
+            Array.from(selectedSeats).sort().forEach(seat => {
+                const [row, seatNum] = seat.split('_');
+                listHtml += `<span style="background: #f39c12; color: white; padding: 5px 10px; border-radius: 5px;">
+                                Ряд ${row}, Место ${seatNum}
+                                <button type="button" onclick="removeSeat('${seat}')" style="background: none; border: none; color: white; cursor: pointer;">✖</button>
+                            </span>`;
+            });
+            listHtml += '</div>';
+            selectedListDiv.innerHTML = listHtml;
+            bookingForm.style.display = 'block';
+            clearBtn.style.display = 'inline-block';
+            selectedSeatsInput.value = Array.from(selectedSeats).join(',');
+        }
+
+        const freeCount = document.querySelectorAll('.seat.free').length - selectedSeats.size;
+        if (availableSeatsSpan) availableSeatsSpan.textContent = freeCount;
+    }
+
+    window.removeSeat = function(seatKey) {
+        selectedSeats.delete(seatKey);
+        updateDisplay();
+    };
+
+    freeSeats.forEach(seat => {
+        seat.addEventListener('click', function() {
+            const row = this.dataset.row;
+            const seatNum = this.dataset.seat;
+            const seatKey = `${row}_${seatNum}`;
+
+            if (selectedSeats.has(seatKey)) {
+                selectedSeats.delete(seatKey);
+            } else {
+                selectedSeats.add(seatKey);
+            }
+            updateDisplay();
+        });
+    });
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            selectedSeats.clear();
+            updateDisplay();
+        });
+    }
+
+    if (bookingForm) {
+        bookingForm.addEventListener('submit', (e) => {
+            if (selectedSeats.size === 0) {
+                e.preventDefault();
+                alert('Выберите хотя бы одно место!');
+            } else if (!confirm(`Забронировать ${selectedSeats.size} место(а)?`)) {
+                e.preventDefault();
+            }
+        });
+    }
+</script>
+{% endblock %}

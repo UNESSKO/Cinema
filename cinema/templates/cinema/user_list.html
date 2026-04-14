@@ -1,0 +1,20 @@
+{% extends 'cinema/base.html' %}
+{% block title %}Пользователи{% endblock %}
+{% block content %}
+<h1>👥 Пользователи системы</h1>
+<table>
+    <thead>
+        <tr><th>Логин</th><th>Email</th><th>Дата рождения</th><th>Статус</th></tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+        <tr>
+            <td>{{ user.username }}</a>
+            <td>{{ user.email }}</a>
+            <td>{{ user.birth_date|default:"—" }}</a>
+            <td>{% if user.is_staff %}Админ{% else %}Пользователь{% endif %}</a>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

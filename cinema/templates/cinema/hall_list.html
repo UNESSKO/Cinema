@@ -1,0 +1,31 @@
+{% extends 'cinema/base.html' %}
+{% block title %}Кинозалы{% endblock %}
+{% block content %}
+<h1>🏢 Кинозалы</h1>
+{% if user.is_staff %}
+    <a href="{% url 'hall_create' %}" class="btn btn-success">➕ Добавить зал</a>
+{% endif %}
+<table>
+    <thead>
+        <tr>
+            <th>Номер зала</th><th>Вместимость</th><th>Звуковая система</th>
+            {% if user.is_staff %}<th>Действия</th>{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for hall in halls %}
+        <tr>
+            <td>{{ hall.number }}</td>
+            <td>{{ hall.capacity }}</td>
+            <td>{{ hall.sound_system }}</td>
+            {% if user.is_staff %}
+            <td>
+                <a href="{% url 'hall_edit' hall.id %}" class="btn btn-warning" style="display: inline-block; padding: 4px 8px; font-size: 12px;">✏️</a>
+                <a href="{% url 'hall_delete' hall.id %}" class="btn" style="background: #e74c3c; display: inline-block; padding: 4px 8px; font-size: 12px;" onclick="return confirm('Точно удалить зал?')">🗑️</a>
+            </td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

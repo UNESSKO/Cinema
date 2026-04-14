@@ -1,0 +1,61 @@
+{% extends 'cinema/base.html' %}
+{% block title %}Сеансы{% endblock %}
+{% block content %}
+<h1>🎫 Расписание сеансов</h1>
+
+{% if user.is_staff %}
+    <a href="{% url 'session_create' %}" class="btn btn-success">➕ Добавить сеанс</a>
+{% endif %}
+
+{% if sessions %}
+    <table>
+        <thead>
+            <tr>
+                <th>Фильм</th>
+                <th>Режиссёр</th>
+                <th>Зал</th>
+                <th>Дата и время</th>
+                <th>Цена</th>
+                <th>Свободно мест</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in sessions %}
+            <tr>
+                <td>
+                    <a href="{% url 'movie_detail' session.movie.id %}">{{ session.movie.title }}</a>
+                </td>
+                <td>
+                    {% if session.movie.director %}
+                        <a href="{% url 'director_detail' session.movie.director.id %}">{{ session.movie.director.name }}</a>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>Зал {{ session.hall.number }}</td>
+                <td>{{ session.start_time|date:"d.m.Y H:i" }}</td>
+                <td>{{ session.price }} ₽</td>
+                <td>{{ session.available_seats }}/{{ session.hall.capacity }}</td>
+                <td>
+                    <a href="{% url 'session_detail' session.id %}" class="btn btn-success" style="display: inline-block; padding: 4px 8px; font-size: 12px;">🎫 Забронировать</a>
+                    {% if user.is_staff %}
+                        <a href="{% url 'session_edit' session.id %}" class="btn btn-warning" style="display: inline-block; padding: 4px 8px; font-size: 12px;">✏️</a>
+                        <a href="{% url 'session_delete' session.id %}" class="btn btn-danger" style="display: inline-block; padding: 4px 8px; font-size: 12px;" onclick="return confirm('Точно удалить сеанс?')">🗑️</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>Нет доступных сеансов.</p>
+{% endif %}
+
+{% if not user.is_authenticated %}
+    <p style="margin-top: 20px;">
+        <a href="{% url 'login' %}" class="btn">🔐 Войдите</a> или
+        <a href="{% url 'register' %}" class="btn">📝 зарегистрируйтесь</a>, чтобы бронировать билеты.
+    </p>
+{% endif %}
+{% endblock %}

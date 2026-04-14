@@ -1,0 +1,13 @@
+{% extends 'cinema/base.html' %}
+{% block title %}Жанры{% endblock %}
+{% block content %}
+<h1>🎭 Жанры фильмов</h1>
+<table>
+    <thead><tr><th>Название жанра</th></tr></thead>
+    <tbody>
+        {% for genre in genres %}
+        <tr><td>{{ genre.name }}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

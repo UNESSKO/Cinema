@@ -1,0 +1,32 @@
+{% extends 'cinema/base.html' %}
+{% load static %}
+{% block title %}Режиссёры{% endblock %}
+{% block content %}
+<h1>🎬 Режиссёры</h1>
+{% if user.is_staff %}
+    <a href="{% url 'director_create' %}" class="btn btn-success">➕ Добавить режиссёра</a>
+{% endif %}
+
+<div class="directors-grid">
+    {% for director in directors %}
+    <div class="director-card">
+        {% if director.photo %}
+            <img src="{{ director.photo.url }}" alt="{{ director.name }}" class="director-photo">
+        {% else %}
+            <div class="director-photo-placeholder">
+                <span>🎬</span>
+            </div>
+        {% endif %}
+        <h3 class="director-name">
+            <a href="{% url 'director_detail' director.id %}">{{ director.name }}</a>
+        </h3>
+        {% if user.is_staff %}
+            <div class="director-actions">
+                <a href="{% url 'director_edit' director.id %}" class="btn btn-warning" style="font-size: 12px; padding: 4px 8px;">✏️</a>
+                <a href="{% url 'director_delete' director.id %}" class="btn btn-danger" style="font-size: 12px; padding: 4px 8px;" onclick="return confirm('Точно удалить режиссёра?')">🗑️</a>
+            </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

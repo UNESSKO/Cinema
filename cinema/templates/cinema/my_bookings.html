@@ -1,0 +1,59 @@
+{% extends 'cinema/base.html' %}
+{% block title %}Мои бронирования{% endblock %}
+{% block content %}
+<h1>📅 Мои бронирования</h1>
+
+{% if bookings %}
+    <table>
+        <thead>
+            <tr>
+                <th>Фильм</th>
+                <th>Режиссёр</th>
+                <th>Зал</th>
+                <th>Время</th>
+                <th>Место</th>
+                <th>Цена</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for booking in bookings %}
+            <tr>
+                <td>
+                    <a href="{% url 'movie_detail' booking.session.movie.id %}">{{ booking.session.movie.title }}</a>
+                </td>
+                <td>
+                    {% if booking.session.movie.director %}
+                        <a href="{% url 'director_detail' booking.session.movie.director.id %}">{{ booking.session.movie.director.name }}</a>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>Зал {{ booking.session.hall.number }}</td>
+                <td>{{ booking.session.start_time|date:"d.m.Y H:i" }}</td>
+                <td>Ряд {{ booking.seat_row }}, Место {{ booking.seat_number }}</td>
+                <td>{{ booking.session.price }} ₽</td>
+                <td>
+                    <form method="post" action="{% url 'cancel_booking' booking.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Отменить бронирование?')">❌ Отменить</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div style="text-align: center; padding: 40px;">
+        <p style="font-size: 18px;">У вас пока нет бронирований.</p>
+        <div style="margin-top: 20px;">
+            <a href="{% url 'session_list' %}" class="btn btn-success">🎫 Посмотреть доступные сеансы</a>
+            <a href="{% url 'movie_list' %}" class="btn">🎬 Перейти к фильмам</a>
+        </div>
+    </div>
+{% endif %}
+
+<div style="margin-top: 20px;">
+    <a href="{% url 'movie_list' %}" class="btn">← На главную</a>
+</div>
+{% endblock %}

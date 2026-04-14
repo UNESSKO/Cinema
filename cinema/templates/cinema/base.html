@@ -1,0 +1,46 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кинотеатр - {% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'cinema/style.css' %}">
+</head>
+<body>
+    <nav>
+        <div>
+            <a href="{% url 'movie_list' %}">🎬 Фильмы</a>
+            <a href="{% url 'director_list' %}">🎭 Режиссёры</a>
+            <a href="{% url 'session_list' %}">🎫 Сеансы</a>
+            <a href="{% url 'hall_list' %}">🏢 Залы</a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'my_bookings' %}">📅 Мои брони</a>
+            {% endif %}
+            {% if user.is_staff %}
+                <a href="{% url 'user_list' %}">👥 Пользователи</a>
+            {% endif %}
+        </div>
+        <div>
+            {% if user.is_authenticated %}
+                <span>👤 {{ user.username }}</span>
+                <form method="post" action="{% url 'logout' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit">🚪 Выйти</button>
+                </form>
+            {% else %}
+                <a href="{% url 'login' %}">🔐 Вход</a>
+                <a href="{% url 'register' %}">📝 Регистрация</a>
+            {% endif %}
+        </div>
+    </nav>
+    <div class="container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="messages {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
