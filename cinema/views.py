@@ -4,8 +4,9 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Movie, Session, Hall, User, Director, Booking, Review
+from .models import Movie, Session, Hall, User, Director, Booking, Review, Ticket
 from .forms import RegisterForm, MovieForm, SessionForm, HallForm, DirectorForm, ReviewForm, BookingForm
+import json
 
 
 def is_admin(user):
@@ -174,34 +175,33 @@ def review_delete(request, pk):
 
 @login_required
 def session_detail(request, pk):
-    from django.db import connection
+    session = get_object_or_404(Session, pk=pk)
 
-    print(f"\n=== session_detail вызван с pk={pk} ===")
+    # Получаем все бронирования
+    confirmed_bookings = Booking.objects.filter(session=session, status='confirmed')
+    pending_bookings = Booking.objects.filter(session=session, status='pending')
 
-    try:
-        session = Session.objects.get(pk=pk)
-        print(f"Найден сеанс: {session.movie.title}")
-    except Session.DoesNotExist:
-        print(f"Сеанс с id={pk} не найден!")
-        messages.error(request, 'Сеанс не найден')
-        return redirect('session_list')
+    # Для отображения занятых мест
+    occupied_seats = [f"{b.seat_row}_{b.seat_number}" for b in confirmed_bookings]
+    pending_seats = [f"{b.seat_row}_{b.seat_number}" for b in pending_bookings]
 
-    # Получаем все подтверждённые бронирования для этого сеанса
-    bookings = Booking.objects.filter(session=session, status='confirmed')
-    print(f"Найдено бронирований: {bookings.count()}")
+    seats_per_row = 15
+    rows_count = session.hall.capacity // seats_per_row
+    rows_range = list(range(1, rows_count + 1))
+    seats_range = list(range(1, seats_per_row + 1))
 
-    # Создаём список строк
-    occupied_seats = []
-    for b in bookings:
-        seat_key = f"{b.seat_row}_{b.seat_number}"
-        occupied_seats.append(seat_key)
-        print(f"  - занято: {seat_key}")
-
-    print(f"Итоговый список occupied_seats: {occupied_seats}")
+    # ОТЛАДКА В КОНСОЛЬ
+    print(f"\n=== session_detail ===")
+    print(f"Session ID: {pk}")
+    print(f"confirmed (красные): {occupied_seats}")
+    print(f"pending (оранжевые): {pending_seats}")
+    print(f"rows_range: {rows_range}")
+    print(f"seats_range: {seats_range}")
+    print(f"rows_count: {rows_count}, seats_per_row: {seats_per_row}")
+    print("=====================\n")
 
     if request.method == 'POST':
         selected_seats_str = request.POST.get('selected_seats', '')
-        print(f"POST запрос, selected_seats: {selected_seats_str}")
 
         if selected_seats_str:
             selected_seats = selected_seats_str.split(',')
@@ -214,27 +214,28 @@ def session_detail(request, pk):
                     row = int(row)
                     seat = int(seat)
 
-                    if seat_key in occupied_seats:
-                        errors.append(f"Место {row}-{seat} уже занято")
+                    # Проверяем, не заблокировано ли место
+                    if seat_key in occupied_seats or seat_key in pending_seats:
+                        errors.append(f"Место {row}-{seat} уже занято или ожидает подтверждения")
                         continue
 
+                    # Создаём бронирование
                     booking = Booking.objects.create(
                         session=session,
                         user=request.user,
                         seat_row=row,
                         seat_number=seat,
-                        status='confirmed'
+                        status='pending'
                     )
                     booked_count += 1
-                    occupied_seats.append(seat_key)
-                    print(f"Создано бронирование: ряд {row}, место {seat}")
+                    pending_seats.append(seat_key)
 
-                except (ValueError, IndexError) as e:
+                except (ValueError, IndexError):
                     errors.append(f"Некорректные данные места: {seat_key}")
-                    print(f"Ошибка: {e}")
 
             if booked_count > 0:
-                messages.success(request, f'✅ Успешно забронировано {booked_count} место(а)!')
+                messages.success(request,
+                                 f'✅ {booked_count} место(а) забронировано! Ожидайте подтверждения администратора.')
             if errors:
                 for error in errors:
                     messages.error(request, f'❌ {error}')
@@ -244,22 +245,38 @@ def session_detail(request, pk):
         else:
             messages.error(request, '❌ Не выбрано ни одного места')
 
-    context = {
+    occupied_seats_json = json.dumps(occupied_seats)
+    pending_seats_json = json.dumps(pending_seats)
+
+    return render(request, 'cinema/session_detail.html', {
         'session': session,
         'occupied_seats': occupied_seats,
-        'hall': session.hall
-    }
+        'pending_seats': pending_seats,
+        'occupied_seats_json': occupied_seats_json,
+        'pending_seats_json': pending_seats_json,
+        'hall': session.hall,
+        'rows_range': rows_range,
+        'seats_range': seats_range,
+        'rows_count': rows_count,
+        'seats_per_row': seats_per_row,
+    })
 
-    print(f"Передаём в шаблон: occupied_seats = {occupied_seats}")
-    print("=== Конец session_detail ===\n")
+@login_required
+def ticket_detail(request, pk):
+    ticket = get_object_or_404(Ticket, pk=pk)
 
-    return render(request, 'cinema/session_detail.html', context)
+    # Проверяем, что билет принадлежит текущему пользователю
+    if ticket.booking.user != request.user and not request.user.is_staff:
+        messages.error(request, 'У вас нет доступа к этому билету')
+        return redirect('my_bookings')
+
+    return render(request, 'cinema/ticket_detail.html', {'ticket': ticket})
 
 
 @login_required
 def my_bookings(request):
-    bookings = Booking.objects.filter(user=request.user, status='confirmed').select_related('session', 'session__movie',
-                                                                                            'session__hall')
+    # Получаем ВСЕ бронирования пользователя (включая pending)
+    bookings = Booking.objects.filter(user=request.user).select_related('session', 'session__movie', 'session__hall')
     return render(request, 'cinema/my_bookings.html', {'bookings': bookings})
 
 
