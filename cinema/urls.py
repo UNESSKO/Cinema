@@ -43,4 +43,6 @@ urlpatterns = [
 
     # Пользователи
     path('users/', views.user_list, name='user_list'),
+    path('ticket/<int:pk>/', views.ticket_detail, name='ticket_detail'),
+
 ]
