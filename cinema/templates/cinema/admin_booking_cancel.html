@@ -1,0 +1,22 @@
+{% extends 'cinema/base.html' %}
+{% block title %}Отмена бронирования{% endblock %}
+{% block content %}
+
+<h1>❌ Отмена бронирования #{{ booking.id }}</h1>
+
+<div style="background: #f8d7da; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+    <p><strong>👤 Пользователь:</strong> {{ booking.user.username }}</p>
+    <p><strong>🎬 Фильм:</strong> {{ booking.session.movie.title }}</p>
+    <p><strong>📅 Дата и время:</strong> {{ booking.session.start_time|date:"d.m.Y H:i" }}</p>
+    <p><strong>💺 Место:</strong> Ряд {{ booking.seat_row }}, Место {{ booking.seat_number }}</p>
+</div>
+
+<p>Вы уверены, что хотите отменить это бронирование?</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">❌ Да, отменить</button>
+    <a href="{% url 'admin_bookings' %}" class="btn">Отмена</a>
+</form>
+
+{% endblock %}

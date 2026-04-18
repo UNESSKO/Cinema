@@ -1,0 +1,54 @@
+{% extends 'cinema/base.html' %}
+{% block title %}Билет #{{ ticket.id }}{% endblock %}
+{% block content %}
+
+<div style="max-width: 600px; margin: 0 auto;">
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 30px; color: white; text-align: center;">
+        <h1 style="margin: 0 0 10px 0;">🎬 БИЛЕТ 🎬</h1>
+        <p style="font-size: 14px; opacity: 0.8;">Электронный билет</p>
+        
+        <div style="background: white; color: black; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: left;">
+            <h2 style="margin: 0 0 15px 0; color: #333;">{{ ticket.booking.session.movie.title }}</h2>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <span style="color: #666;">📅 Дата и время:</span>
+                <strong>{{ ticket.booking.session.start_time|date:"d.m.Y H:i" }}</strong>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <span style="color: #666;">🏢 Зал:</span>
+                <strong>{{ ticket.booking.session.hall.number }}</strong>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <span style="color: #666;">💺 Место:</span>
+                <strong>Ряд {{ ticket.booking.seat_row }}, Место {{ ticket.booking.seat_number }}</strong>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <span style="color: #666;">💰 Цена:</span>
+                <strong>{{ ticket.booking.session.price }} ₽</strong>
+            </div>
+            
+{#            <div style="display: flex; justify-content: space-between;">#}
+{#                <span style="color: #666;">👤 Зритель:</span>#}
+{#                <strong>{{ ticket.booking.user.username }}</strong>#}
+{#            </div>#}
+        </div>
+        
+        <div style="background: white; border-radius: 12px; padding: 20px; text-align: center;">
+            <div style="font-family: monospace; font-size: 24px; letter-spacing: 2px;">
+                {{ ticket.qr_code }}
+            </div>
+            <p style="color: #666; font-size: 12px; margin-top: 10px;">QR-код для входа</p>
+        </div>
+        
+        <p style="margin-top: 20px; font-size: 12px; opacity: 0.7;">Пожалуйста, сохраните этот билет до окончания сеанса</p>
+    </div>
+    
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="{% url 'my_bookings' %}" class="btn">← Назад к моим бронированиям</a>
+    </div>
+</div>
+
+{% endblock %}

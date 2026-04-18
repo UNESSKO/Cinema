@@ -1,0 +1,44 @@
+{% extends 'cinema/base.html' %}
+{% block title %}Панель администратора{% endblock %}
+{% block content %}
+
+<h1>👑 Панель администратора</h1>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px;">
+        <h3 style="margin: 0;">👥 Пользователи</h3>
+        <p style="font-size: 36px; margin: 10px 0;">{{ total_users }}</p>
+    </div>
+    <div style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; padding: 20px; border-radius: 12px;">
+        <h3 style="margin: 0;">⏳ Ожидают подтверждения</h3>
+        <p style="font-size: 36px; margin: 10px 0;">{{ pending_bookings }}</p>
+    </div>
+    <div style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color: white; padding: 20px; border-radius: 12px;">
+        <h3 style="margin: 0;">🎬 Фильмы</h3>
+        <p style="font-size: 36px; margin: 10px 0;">{{ total_movies }}</p>
+    </div>
+    <div style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; padding: 20px; border-radius: 12px;">
+        <h3 style="margin: 0;">🎫 Сеансы</h3>
+        <p style="font-size: 36px; margin: 10px 0;">{{ total_sessions }}</p>
+    </div>
+</div>
+
+<div style="display: flex; gap: 20px; flex-wrap: wrap;">
+    <a href="{% url 'admin_bookings' %}" class="btn btn-warning" style="background: #f39c12; padding: 15px 30px; font-size: 18px;">
+        📋 Управление бронированиями
+    </a>
+    <a href="{% url 'admin_users' %}" class="btn btn-primary" style="background: #3498db; padding: 15px 30px; font-size: 18px;">
+        👥 Управление пользователями
+    </a>
+    <a href="{% url 'movie_create' %}" class="btn btn-success" style="background: #2ecc71; padding: 15px 30px; font-size: 18px;">
+        🎬 Добавить фильм
+    </a>
+    <a href="{% url 'director_create' %}" class="btn btn-info" style="background: #1abc9c; padding: 15px 30px; font-size: 18px;">
+        🎭 Добавить режиссёра
+    </a>
+    <a href="{% url 'session_create' %}" class="btn btn-primary" style="background: #9b59b6; padding: 15px 30px; font-size: 18px;">
+        🎫 Добавить сеанс
+    </a>
+</div>
+
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'cinema/base.html' %}
+{% block title %}Изменение прав пользователя{% endblock %}
+{% block content %}
+
+<h1>🔄 Изменение прав пользователя</h1>
+
+<div style="background: #e8f4fd; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+    <p><strong>👤 Пользователь:</strong> {{ user.username }}</p>
+    <p><strong>📧 Email:</strong> {{ user.email }}</p>
+    <p><strong>👮 Текущий статус:</strong> 
+        {% if user.is_staff %}
+            <span style="background: #3498db; color: white; padding: 3px 8px; border-radius: 4px;">🛡️ Администратор</span>
+        {% else %}
+            <span style="background: #95a5a6; color: white; padding: 3px 8px; border-radius: 4px;">👤 Пользователь</span>
+        {% endif %}
+    </p>
+</div>
+
+<p>Вы уверены, что хотите {% if user.is_staff %}снять права администратора{% else %}назначить администратором{% endif %} с пользователя <strong>{{ user.username }}</strong>?</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-warning">
+        {% if user.is_staff %}🔽 Снять права администратора{% else %}🔼 Назначить администратором{% endif %}
+    </button>
+    <a href="{% url 'admin_users' %}" class="btn">Отмена</a>
+</form>
+
+{% endblock %}

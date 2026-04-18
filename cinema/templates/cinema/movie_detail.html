@@ -47,6 +47,19 @@
 
 <hr style="margin: 30px 0;">
 
+    {% if movie.moviepromotion_set.all %}
+    <div style="margin-top: 20px; background: #fff3cd; padding: 15px; border-radius: 8px;">
+        <h3>🎁 Акции на этот фильм</h3>
+        {% for mp in movie.moviepromotion_set.all %}
+            {% if mp.promotion.is_currently_active %}
+                <div style="display: inline-block; background: #2ecc71; color: white; padding: 5px 10px; border-radius: 4px; margin-right: 10px;">
+                    {{ mp.promotion.name }}: -{{ mp.promotion.discount_percent }}%
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endif %}
+
 <h2>🎫 Ближайшие сеансы</h2>
 {% if sessions %}
     <table style="width: 100%; border-collapse: collapse;">
@@ -64,7 +77,17 @@
             <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #ddd;">{{ session.start_time|date:"d.m.Y H:i" }}</td>
                 <td style="padding: 10px; border-bottom: 1px solid #ddd;">Зал {{ session.hall.number }}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #ddd;">{{ session.price }} ₽</td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">
+    {% with promotion=session.get_active_promotion %}
+        {% if promotion %}
+            <span style="text-decoration: line-through; color: #888;">{{ session.price }} ₽</span>
+            <strong style="color: #2ecc71;">{{ session.get_discounted_price|floatformat:0 }} ₽</strong>
+            <span style="background: #f39c12; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">-{{ promotion.discount_percent }}%</span>
+        {% else %}
+            {{ session.price }} ₽
+        {% endif %}
+    {% endwith %}
+</td></td>
                 <td style="padding: 10px; border-bottom: 1px solid #ddd;">{{ session.available_seats }}/{{ session.hall.capacity }}</td>
                 <td style="padding: 10px; border-bottom: 1px solid #ddd;">
                     <a href="{% url 'session_detail' session.id %}" class="btn btn-success">Забронировать</a>

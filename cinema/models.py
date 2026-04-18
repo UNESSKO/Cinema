@@ -3,6 +3,8 @@ from django.contrib.auth.models import AbstractUser
 from django.urls import reverse
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+import uuid
+
 
 class User(AbstractUser):
     birth_date = models.DateField('Дата рождения', null=True, blank=True)
@@ -59,7 +61,8 @@ class Director(models.Model):
 
     def delete(self, *args, **kwargs):
         if self.movies.count() > 0:
-            raise ValidationError(f'Нельзя удалить режиссёра "{self.name}", так как у него есть {self.movies.count()} фильм(ов). Сначала удалите все фильмы режиссёра.')
+            raise ValidationError(
+                f'Нельзя удалить режиссёра "{self.name}", так как у него есть {self.movies.count()} фильм(ов). Сначала удалите все фильмы режиссёра.')
         super().delete(*args, **kwargs)
 
     class Meta:
@@ -74,7 +77,8 @@ class Movie(models.Model):
     rating = models.FloatField('Рейтинг', default=0.0)
     poster = models.ImageField('Постер', upload_to='posters/', blank=True, null=True)
     release_year = models.IntegerField('Год выпуска')
-    director = models.ForeignKey(Director, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Режиссёр', related_name='movies')
+    director = models.ForeignKey(Director, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Режиссёр',
+                                 related_name='movies')
     genres = models.ManyToManyField(Genre, through='MovieGenre', verbose_name='Жанры')
 
     def __str__(self):
@@ -84,8 +88,9 @@ class Movie(models.Model):
         return reverse('movie_detail', args=[self.pk])
 
     def delete(self, *args, **kwargs):
-        if self.session_set.count() > 0:
-            raise ValidationError(f'Нельзя удалить фильм "{self.title}", так как у него есть {self.session_set.count()} сеанс(ов). Сначала удалите все сеансы фильма.')
+        if self.sessions.count() > 0:
+            raise ValidationError(
+                f'Нельзя удалить фильм "{self.title}", так как у него есть {self.sessions.count()} сеанс(ов). Сначала удалите все сеансы фильма.')
         super().delete(*args, **kwargs)
 
     def average_rating(self):
@@ -116,12 +121,10 @@ class Hall(models.Model):
         return f'Зал {self.number}'
 
     def get_rows_count(self):
-        """Возвращает количество рядов в зале (в одном ряду 20 мест)"""
-        return self.capacity // 10
+        return self.capacity // 20
 
     def get_seats_per_row(self):
-        """Возвращает количество мест в ряду (всегда 20)"""
-        return 10
+        return 20
 
     class Meta:
         verbose_name = 'Кинозал'
@@ -141,8 +144,39 @@ class Session(models.Model):
         return reverse('session_detail', args=[self.pk])
 
     def available_seats(self):
-        booked = self.bookings.filter(status='confirmed').count()
-        return self.hall.capacity - booked
+        # Учитываем и подтверждённые, и ожидающие бронирования
+        occupied = self.bookings.filter(status__in=['confirmed', 'pending']).count()
+        return self.hall.capacity - occupied
+
+    def pending_bookings_count(self):
+        return self.bookings.filter(status='pending').count()
+
+    def get_active_promotion(self):
+        """Возвращает активную акцию для фильма, если есть"""
+        from django.utils import timezone
+        today = timezone.now().date()
+        promotions = self.movie.promotion_set.filter(
+            is_active=True,
+            start_date__lte=today,
+            end_date__gte=today
+        )
+        return promotions.first() if promotions.exists() else None
+
+    def get_discounted_price(self):
+        """Возвращает цену со скидкой, если есть активная акция"""
+        promotion = self.get_active_promotion()
+        if promotion:
+            discount = promotion.discount_percent
+            return float(self.price) * (1 - discount / 100)
+        return float(self.price)
+
+    def delete(self, *args, **kwargs):
+        # Отменяем все активные бронирования перед удалением
+        bookings = self.bookings.filter(status__in=['pending', 'confirmed'])
+        for booking in bookings:
+            booking.status = 'cancelled'
+            booking.save()
+        super().delete(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Сеанс'
@@ -162,16 +196,30 @@ class Booking(models.Model):
     seat_number = models.IntegerField('Место')
     status = models.CharField('Статус', max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField('Дата бронирования', auto_now_add=True)
-    #expires_at = models.DateTimeField('Действительно до', null=True, blank=True)
 
     def __str__(self):
-        return f'Бронь {self.id}: {self.user.username} - {self.session.movie.title} (ряд {self.seat_row}, место {self.seat_number})'
+        return f'Бронь {self.id}: {self.user.username} - {self.session.movie.title} (ряд {self.seat_row}, место {self.seat_number}) - {self.get_status_display()}'
 
-    # def save(self, *args, **kwargs):
-    #     # Если бронь новая, устанавливаем время истечения (15 минут)
-    #     if not self.pk and not self.expires_at:
-    #         self.expires_at = timezone.now() + timezone.timedelta(minutes=15)
-    #     super().save(*args, **kwargs)
+    def save(self, *args, **kwargs):
+        # При создании бронирования сохраняем цену со скидкой
+        if not self.pk and self.session:
+            self.price_at_booking = self.session.get_discounted_price()
+            promotion = self.session.get_active_promotion()
+            if promotion:
+                self.discount_applied = promotion.discount_percent
+        super().save(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        # Если статус меняется на confirmed и билета ещё нет, создаём билет
+        if self.pk:
+            old_status = Booking.objects.get(pk=self.pk).status
+            if old_status != 'confirmed' and self.status == 'confirmed':
+                # Создаём билет
+                Ticket.objects.get_or_create(
+                    booking=self,
+                    defaults={'qr_code': str(uuid.uuid4())[:8].upper()}
+                )
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Бронирование'
@@ -181,11 +229,16 @@ class Booking(models.Model):
 
 class Ticket(models.Model):
     booking = models.OneToOneField(Booking, on_delete=models.CASCADE, verbose_name='Бронирование', related_name='ticket')
+    qr_code = models.CharField('QR-код', max_length=255, blank=True, null=True)  # Пока оставляем nullable
     purchase_date = models.DateTimeField('Дата покупки', auto_now_add=True)
-    qr_code = models.CharField('QR-код', max_length=255, blank=True, null=True)
 
     def __str__(self):
-        return f'Билет {self.id}: {self.booking.user.username} - {self.booking.session.movie.title}'
+        return f'Билет #{self.id}: {self.booking.user.username} - {self.booking.session.movie.title} ({self.booking.seat_row} ряд, {self.booking.seat_number} место)'
+
+    def save(self, *args, **kwargs):
+        if not self.qr_code:
+            self.qr_code = str(uuid.uuid4())[:8].upper()
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Билет'
@@ -208,7 +261,7 @@ class Review(models.Model):
     class Meta:
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
-        unique_together = ('movie', 'user')  # Один пользователь - один отзыв на фильм
+        unique_together = ('movie', 'user')
 
 
 class Promotion(models.Model):
@@ -217,10 +270,17 @@ class Promotion(models.Model):
     discount_percent = models.IntegerField('Скидка %')
     start_date = models.DateField('Дата начала')
     end_date = models.DateField('Дата окончания')
-    movies = models.ManyToManyField(Movie, through='MoviePromotion', verbose_name='Фильмы')
+    movies = models.ManyToManyField(Movie, through='MoviePromotion', verbose_name='Фильмы', blank=True)
+    is_active = models.BooleanField('Активна', default=True)
 
     def __str__(self):
-        return self.name
+        return f'{self.name} (-{self.discount_percent}%)'
+
+    def is_currently_active(self):
+        """Проверяет, активна ли акция сейчас"""
+        from django.utils import timezone
+        today = timezone.now().date()
+        return self.is_active and self.start_date <= today <= self.end_date
 
     class Meta:
         verbose_name = 'Акция'
@@ -228,8 +288,11 @@ class Promotion(models.Model):
 
 
 class MoviePromotion(models.Model):
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE)
-    promotion = models.ForeignKey(Promotion, on_delete=models.CASCADE)
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, verbose_name='Фильм')
+    promotion = models.ForeignKey(Promotion, on_delete=models.CASCADE, verbose_name='Акция')
 
     class Meta:
+        verbose_name = 'Акция фильма'
+        verbose_name_plural = 'Акции фильмов'
         unique_together = ('movie', 'promotion')
+

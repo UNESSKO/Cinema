@@ -2,11 +2,17 @@
 {% load static %}
 {% block title %}Удаление {{ type_name }}{% endblock %}
 {% block content %}
-<div class="delete-confirm">
-    <h1>⚠️ Подтверждение удаления</h1>
+<div class="delete-confirm" style="text-align: center; padding: 40px;">
+    <h1 style="color: #e74c3c;">⚠️ Подтверждение удаления</h1>
+
+    {% if warning_message %}
+    <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin: 20px auto; max-width: 500px;">
+        {{ warning_message }}
+    </div>
+    {% endif %}
 
     {% if can_delete %}
-        <p>
+        <p style="font-size: 18px; margin: 20px 0;">
             Вы действительно хотите удалить {{ type_name }}
             <strong style="color: #e74c3c;">"{{ object }}"</strong>?
         </p>
@@ -21,7 +27,7 @@
             {% endif %}
         </form>
     {% else %}
-        <div class="delete-warning">
+        <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin: 20px auto; max-width: 500px;">
             <strong>⛔ Невозможно удалить {{ type_name }}!</strong><br><br>
             {{ block_reason }}
         </div>

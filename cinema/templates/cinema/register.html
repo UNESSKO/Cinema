@@ -1,11 +1,70 @@
 {% extends 'cinema/base.html' %}
 {% block title %}Регистрация{% endblock %}
 {% block content %}
-<h1>📝 Регистрация</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-success">Зарегистрироваться</button>
-</form>
-<p>Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
+
+<div style="max-width: 500px; margin: 0 auto;">
+    <h1 style="text-align: center;">📝 Регистрация</h1>
+
+    <form method="post" style="margin-top: 30px;">
+        {% csrf_token %}
+
+        {% if form.errors %}
+            <div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+                <strong>⚠️ Ошибка при регистрации:</strong>
+                <ul style="margin: 10px 0 0 20px;">
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li>{{ field.label }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <div style="margin-bottom: 20px;">
+            <label for="id_username" style="display: block; margin-bottom: 8px; font-weight: 500;">Имя пользователя:</label>
+            <input type="text" name="username" id="id_username" class="form-control" required
+                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            <small style="color: #666;">Обязательное поле. Не более 150 символов. Только буквы, цифры и @/./+/-/_.</small>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label for="id_email" style="display: block; margin-bottom: 8px; font-weight: 500;">Email:</label>
+            <input type="email" name="email" id="id_email" class="form-control" required
+                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label for="id_birth_date" style="display: block; margin-bottom: 8px; font-weight: 500;">Дата рождения:</label>
+            <input type="date" name="birth_date" id="id_birth_date" class="form-control"
+                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label for="id_password1" style="display: block; margin-bottom: 8px; font-weight: 500;">Пароль:</label>
+            <input type="password" name="password1" id="id_password1" class="form-control" required
+                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            <small style="color: #666;">Пароль должен содержать не менее 8 символов и не должен быть слишком простым.</small>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label for="id_password2" style="display: block; margin-bottom: 8px; font-weight: 500;">Подтверждение пароля:</label>
+            <input type="password" name="password2" id="id_password2" class="form-control" required
+                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            <small style="color: #666;">Введите тот же пароль ещё раз для подтверждения.</small>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px; font-size: 16px;">
+            ✅ Зарегистрироваться
+        </button>
+    </form>
+
+    <p style="text-align: center; margin-top: 20px;">
+        Уже есть аккаунт? <a href="{% url 'login' %}" style="color: #3498db;">Войти</a>
+    </p>
+</div>
+
 {% endblock %}

@@ -43,4 +43,21 @@ urlpatterns = [
 
     # Пользователи
     path('users/', views.user_list, name='user_list'),
+    path('ticket/<int:pk>/', views.ticket_detail, name='ticket_detail'),
+
+    # Акции
+    path('promotions/', views.promotion_list, name='promotion_list'),
+    path('promotions/<int:pk>/', views.promotion_detail, name='promotion_detail'),
+    path('promotions/create/', views.promotion_create, name='promotion_create'),
+    path('promotions/<int:pk>/edit/', views.promotion_edit, name='promotion_edit'),
+    path('promotions/<int:pk>/delete/', views.promotion_delete, name='promotion_delete'),
+
+    # Админ панель (веб-интерфейс)
+    path('admin-panel/', views.admin_panel, name='admin_panel'),
+    path('admin-panel/bookings/', views.admin_bookings, name='admin_bookings'),
+    path('admin-panel/booking/<int:pk>/confirm/', views.admin_booking_confirm, name='admin_booking_confirm'),
+    path('admin-panel/booking/<int:pk>/cancel/', views.admin_booking_cancel, name='admin_booking_cancel'),
+    path('admin-panel/users/', views.admin_users, name='admin_users'),
+    path('admin-panel/user/<int:pk>/toggle-staff/', views.admin_user_toggle_staff, name='admin_user_toggle_staff'),
+
 ]

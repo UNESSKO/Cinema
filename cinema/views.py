@@ -4,8 +4,9 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Movie, Session, Hall, User, Director, Booking, Review
-from .forms import RegisterForm, MovieForm, SessionForm, HallForm, DirectorForm, ReviewForm, BookingForm
+from .models import Movie, Session, Hall, User, Director, Booking, Review, Ticket, Promotion
+from .forms import RegisterForm, MovieForm, SessionForm, HallForm, DirectorForm, ReviewForm, BookingForm, PromotionForm
+import json
 
 
 def is_admin(user):
@@ -173,35 +174,37 @@ def review_delete(request, pk):
 # ==================== БРОНИРОВАНИЕ МЕСТ ====================
 
 @login_required
+@login_required
+@login_required
 def session_detail(request, pk):
-    from django.db import connection
+    session = get_object_or_404(Session, pk=pk)
 
-    print(f"\n=== session_detail вызван с pk={pk} ===")
+    # Получаем активную акцию
+    promotion = session.get_active_promotion()
+    discounted_price = session.get_discounted_price()
+    original_price = float(session.price)
 
-    try:
-        session = Session.objects.get(pk=pk)
-        print(f"Найден сеанс: {session.movie.title}")
-    except Session.DoesNotExist:
-        print(f"Сеанс с id={pk} не найден!")
-        messages.error(request, 'Сеанс не найден')
-        return redirect('session_list')
+    # Получаем все бронирования
+    confirmed_bookings = session.bookings.filter(status='confirmed')
+    pending_bookings = session.bookings.filter(status='pending')
 
-    # Получаем все подтверждённые бронирования для этого сеанса
-    bookings = Booking.objects.filter(session=session, status='confirmed')
-    print(f"Найдено бронирований: {bookings.count()}")
+    # Для отображения занятых мест
+    occupied_seats = [f"{b.seat_row}_{b.seat_number}" for b in confirmed_bookings]
+    pending_seats = [f"{b.seat_row}_{b.seat_number}" for b in pending_bookings]
 
-    # Создаём список строк
-    occupied_seats = []
-    for b in bookings:
-        seat_key = f"{b.seat_row}_{b.seat_number}"
-        occupied_seats.append(seat_key)
-        print(f"  - занято: {seat_key}")
+    # Вычисляем количество рядов
+    seats_per_row = 20
+    rows_count = session.hall.capacity // seats_per_row
+    rows_range = list(range(1, rows_count + 1))
+    seats_range = list(range(1, seats_per_row + 1))
 
-    print(f"Итоговый список occupied_seats: {occupied_seats}")
+    # JSON для JavaScript
+    import json
+    occupied_seats_json = json.dumps(occupied_seats)
+    pending_seats_json = json.dumps(pending_seats)
 
     if request.method == 'POST':
         selected_seats_str = request.POST.get('selected_seats', '')
-        print(f"POST запрос, selected_seats: {selected_seats_str}")
 
         if selected_seats_str:
             selected_seats = selected_seats_str.split(',')
@@ -214,27 +217,27 @@ def session_detail(request, pk):
                     row = int(row)
                     seat = int(seat)
 
-                    if seat_key in occupied_seats:
-                        errors.append(f"Место {row}-{seat} уже занято")
+                    # Проверяем, не заблокировано ли место
+                    if seat_key in occupied_seats or seat_key in pending_seats:
+                        errors.append(f"Место {row}-{seat} уже занято или ожидает подтверждения")
                         continue
 
+                    # Создаём бронирование (цена сохранится автоматически в save)
                     booking = Booking.objects.create(
                         session=session,
                         user=request.user,
                         seat_row=row,
                         seat_number=seat,
-                        status='confirmed'
+                        status='pending'
                     )
                     booked_count += 1
-                    occupied_seats.append(seat_key)
-                    print(f"Создано бронирование: ряд {row}, место {seat}")
 
-                except (ValueError, IndexError) as e:
+                except (ValueError, IndexError):
                     errors.append(f"Некорректные данные места: {seat_key}")
-                    print(f"Ошибка: {e}")
 
             if booked_count > 0:
-                messages.success(request, f'✅ Успешно забронировано {booked_count} место(а)!')
+                messages.success(request,
+                                 f'✅ {booked_count} место(а) забронировано! Ожидайте подтверждения администратора.')
             if errors:
                 for error in errors:
                     messages.error(request, f'❌ {error}')
@@ -244,22 +247,40 @@ def session_detail(request, pk):
         else:
             messages.error(request, '❌ Не выбрано ни одного места')
 
-    context = {
+    return render(request, 'cinema/session_detail.html', {
         'session': session,
-        'occupied_seats': occupied_seats,
-        'hall': session.hall
-    }
+        'occupied_seats_json': occupied_seats_json,
+        'pending_seats_json': pending_seats_json,
+        'hall': session.hall,
+        'rows_range': rows_range,
+        'seats_range': seats_range,
+        'rows_count': rows_count,
+        'seats_per_row': seats_per_row,
+        'promotion': promotion,
+        'original_price': original_price,
+        'discounted_price': discounted_price,
+    })
 
-    print(f"Передаём в шаблон: occupied_seats = {occupied_seats}")
-    print("=== Конец session_detail ===\n")
+@login_required
+def ticket_detail(request, pk):
+    ticket = get_object_or_404(Ticket, pk=pk)
 
-    return render(request, 'cinema/session_detail.html', context)
+    # Проверяем, что билет принадлежит текущему пользователю
+    if ticket.booking.user != request.user and not request.user.is_staff:
+        messages.error(request, 'У вас нет доступа к этому билету')
+        return redirect('my_bookings')
+
+    return render(request, 'cinema/ticket_detail.html', {'ticket': ticket})
 
 
 @login_required
 def my_bookings(request):
-    bookings = Booking.objects.filter(user=request.user, status='confirmed').select_related('session', 'session__movie',
-                                                                                            'session__hall')
+    # Получаем ВСЕ бронирования пользователя (включая cancelled)
+    # Сортируем по дате создания (новые сверху)
+    bookings = Booking.objects.filter(user=request.user).select_related(
+        'session', 'session__movie', 'session__hall'
+    ).order_by('-created_at')
+
     return render(request, 'cinema/my_bookings.html', {'bookings': bookings})
 
 
@@ -354,9 +375,18 @@ def director_delete(request, pk):
 # ==================== СЕАНСЫ ====================
 
 def session_list(request):
-    sessions = Session.objects.select_related('movie', 'hall').filter(start_time__gt=timezone.now())
-    return render(request, 'cinema/session_list.html', {'sessions': sessions})
+    sessions = Session.objects.select_related('movie', 'movie__director', 'hall').filter(start_time__gt=timezone.now())
 
+    for session in sessions:
+        # Считаем занятыми и подтверждённые, и ожидающие бронирования
+        confirmed_count = session.bookings.filter(status='confirmed').count()
+        pending_count = session.bookings.filter(status='pending').count()
+        occupied_total = confirmed_count + pending_count
+
+        session.available_seats = session.hall.capacity - occupied_total
+        session.pending_bookings_count = pending_count  # только для админов
+
+    return render(request, 'cinema/session_list.html', {'sessions': sessions})
 
 @login_required
 @user_passes_test(is_admin)
@@ -389,15 +419,24 @@ def session_edit(request, pk):
 @user_passes_test(is_admin)
 def session_delete(request, pk):
     session = get_object_or_404(Session, pk=pk)
+
+    # Подсчитываем активные бронирования
+    active_bookings_count = session.bookings.filter(status__in=['pending', 'confirmed']).count()
+
     if request.method == 'POST':
+        # Отменяем бронирования и удаляем сеанс
         session.delete()
+        messages.success(request,
+                         f'✅ Сеанс "{session.movie.title}" от {session.start_time.strftime("%d.%m.%Y %H:%M")} успешно удалён. {active_bookings_count} бронирований отменено.')
         return redirect('session_list')
+
     return render(request, 'cinema/confirm_delete.html', {
         'object': session,
         'type_name': 'сеанс',
         'cancel_url': 'session_list',
         'cancel_id': None,
-        'can_delete': True
+        'can_delete': True,
+        'warning_message': f'⚠️ ВНИМАНИЕ! У этого сеанса {active_bookings_count} активных бронирований. После удаления сеанса все эти бронирования будут автоматически отменены.'
     })
 
 
@@ -458,3 +497,164 @@ def hall_delete(request, pk):
 def user_list(request):
     users = User.objects.all()
     return render(request, 'cinema/user_list.html', {'users': users})
+
+
+# ==================== АКЦИИ ====================
+
+def promotion_list(request):
+    """Список всех акций"""
+    promotions = Promotion.objects.all()
+    return render(request, 'cinema/promotion_list.html', {'promotions': promotions})
+
+
+def promotion_detail(request, pk):
+    """Детальная страница акции"""
+    promotion = get_object_or_404(Promotion, pk=pk)
+    return render(request, 'cinema/promotion_detail.html', {'promotion': promotion})
+
+
+@login_required
+@user_passes_test(is_admin)
+def promotion_create(request):
+    """Создание акции (только для админа)"""
+    if request.method == 'POST':
+        form = PromotionForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'✅ Акция "{form.instance.name}" успешно создана!')
+            return redirect('promotion_list')
+    else:
+        form = PromotionForm()
+    return render(request, 'cinema/promotion_form.html', {'form': form, 'title': 'Создать акцию'})
+
+
+@login_required
+@user_passes_test(is_admin)
+def promotion_edit(request, pk):
+    """Редактирование акции (только для админа)"""
+    promotion = get_object_or_404(Promotion, pk=pk)
+    if request.method == 'POST':
+        form = PromotionForm(request.POST, instance=promotion)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'✅ Акция "{promotion.name}" успешно обновлена!')
+            return redirect('promotion_list')
+    else:
+        form = PromotionForm(instance=promotion)
+    return render(request, 'cinema/promotion_form.html', {'form': form, 'title': 'Редактировать акцию'})
+
+
+@login_required
+@user_passes_test(is_admin)
+def promotion_delete(request, pk):
+    """Удаление акции (только для админа)"""
+    promotion = get_object_or_404(Promotion, pk=pk)
+
+    if request.method == 'POST':
+        promotion.delete()
+        messages.success(request, f'✅ Акция "{promotion.name}" успешно удалена!')
+        return redirect('promotion_list')
+
+    return render(request, 'cinema/confirm_delete.html', {
+        'object': promotion,
+        'type_name': 'акцию',
+        'cancel_url': 'promotion_list',
+        'cancel_id': None,
+        'can_delete': True
+    })
+
+
+# ==================== АДМИН ПАНЕЛЬ (ВЕБ-ИНТЕРФЕЙС) ====================
+
+@login_required
+@user_passes_test(is_admin)
+def admin_panel(request):
+    """Главная страница панели администратора"""
+    # Статистика
+    total_users = User.objects.count()
+    total_bookings = Booking.objects.count()
+    pending_bookings = Booking.objects.filter(status='pending').count()
+    total_movies = Movie.objects.count()
+    total_sessions = Session.objects.count()
+
+    context = {
+        'total_users': total_users,
+        'total_bookings': total_bookings,
+        'pending_bookings': pending_bookings,
+        'total_movies': total_movies,
+        'total_sessions': total_sessions,
+    }
+    return render(request, 'cinema/admin_panel.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_bookings(request):
+    """Управление бронированиями для администратора"""
+    bookings = Booking.objects.select_related('user', 'session', 'session__movie', 'session__hall').all().order_by(
+        '-created_at')
+    return render(request, 'cinema/admin_bookings.html', {'bookings': bookings})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_booking_confirm(request, pk):
+    """Подтверждение бронирования (создание билета)"""
+    booking = get_object_or_404(Booking, pk=pk)
+
+    if request.method == 'POST':
+        if booking.status == 'pending':
+            booking.status = 'confirmed'
+            booking.save()
+            messages.success(request, f'✅ Бронирование #{booking.id} подтверждено. Билет создан!')
+        else:
+            messages.error(request, f'❌ Бронирование #{booking.id} уже имеет статус "{booking.get_status_display()}"')
+        return redirect('admin_bookings')
+
+    return render(request, 'cinema/admin_booking_confirm.html', {'booking': booking})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_booking_cancel(request, pk):
+    """Отмена бронирования администратором"""
+    booking = get_object_or_404(Booking, pk=pk)
+
+    if request.method == 'POST':
+        if booking.status in ['pending', 'confirmed']:
+            old_status = booking.status
+            booking.status = 'cancelled'
+            booking.save()
+            messages.success(request, f'✅ Бронирование #{booking.id} отменено (было: {booking.get_status_display()})')
+        else:
+            messages.error(request, f'❌ Бронирование #{booking.id} уже отменено')
+        return redirect('admin_bookings')
+
+    return render(request, 'cinema/admin_booking_cancel.html', {'booking': booking})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_users(request):
+    """Управление пользователями для администратора"""
+    users = User.objects.all().order_by('-date_joined')
+    return render(request, 'cinema/admin_users.html', {'users': users})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_user_toggle_staff(request, pk):
+    """Изменение статуса администратора у пользователя"""
+    user = get_object_or_404(User, pk=pk)
+
+    if request.method == 'POST':
+        if user == request.user:
+            messages.error(request, '❌ Вы не можете изменить свой собственный статус администратора!')
+        else:
+            user.is_staff = not user.is_staff
+            user.save()
+            status = 'администратором' if user.is_staff else 'обычным пользователем'
+            messages.success(request, f'✅ Пользователь {user.username} теперь {status}')
+        return redirect('admin_users')
+
+    return render(request, 'cinema/admin_user_toggle.html', {'user': user})

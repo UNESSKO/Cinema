@@ -1,11 +1,33 @@
 {% extends 'cinema/base.html' %}
-{% block title %}Вход{% endblock %}
+{% block title %}Вход в систему{% endblock %}
 {% block content %}
-<h1>🔐 Вход в систему</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn">Войти</button>
-</form>
-<p>Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
+
+<div style="max-width: 400px; margin: 0 auto;">
+    <h1 style="text-align: center;">🔐 Вход в систему</h1>
+
+    <form method="post" style="margin-top: 30px;">
+        {% csrf_token %}
+
+        <div style="margin-bottom: 20px;">
+            <label for="id_username" style="display: block; margin-bottom: 8px; font-weight: 500;">Имя пользователя:</label>
+            <input type="text" name="username" id="id_username" class="form-control" required
+                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label for="id_password" style="display: block; margin-bottom: 8px; font-weight: 500;">Пароль:</label>
+            <input type="password" name="password" id="id_password" class="form-control" required
+                   style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px; font-size: 16px;">
+            🔓 Войти
+        </button>
+    </form>
+
+    <p style="text-align: center; margin-top: 20px;">
+        Нет аккаунта? <a href="{% url 'register' %}" style="color: #3498db;">Зарегистрироваться</a>
+    </p>
+</div>
+
 {% endblock %}

@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import User, Movie, Session, Hall, Director, Review, Booking
+from .models import User, Movie, Session, Hall, Director, Review, Booking, Promotion
 
 
 class RegisterForm(UserCreationForm):
@@ -88,3 +88,14 @@ class BookingForm(forms.ModelForm):
                 raise forms.ValidationError('Неверный номер места (1-15)')
 
         return cleaned_data
+
+class PromotionForm(forms.ModelForm):
+    class Meta:
+        model = Promotion
+        fields = ['name', 'description', 'discount_percent', 'start_date', 'end_date', 'movies', 'is_active']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'start_date': forms.DateInput(attrs={'type': 'date'}),
+            'end_date': forms.DateInput(attrs={'type': 'date'}),
+            'movies': forms.SelectMultiple(attrs={'size': 5}),
+        }
