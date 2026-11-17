@@ -32,11 +32,14 @@
                 <td style="padding: 10px;">{{ booking.session.start_time|date:"d.m.Y H:i" }}</td>
                 <td style="padding: 10px;">Ряд {{ booking.seat_row }}, Место {{ booking.seat_number }}</td>
                 <td style="padding: 10px;">
-                    {% if booking.discount_applied > 0 %}
+                    {% if booking.price_at_booking is None %}
+                        <span title="Цена при бронировании не сохранена; указана текущая цена сеанса">{{ booking.session.price|floatformat:2 }} ₽</span>
+                        <small style="display: block; color: #666;">Цена сеанса</small>
+                    {% elif booking.discount_applied > 0 %}
                         <span style="text-decoration: line-through;">{{ booking.session.price }} ₽</span>
-                        {{ booking.price_at_booking|floatformat:0 }} ₽
+                        {{ booking.price_at_booking|floatformat:2 }} ₽
                     {% else %}
-                        {{ booking.price_at_booking|floatformat:0 }} ₽
+                        {{ booking.price_at_booking|floatformat:2 }} ₽
                     {% endif %}
                 </td>
                 <td style="padding: 10px;">
