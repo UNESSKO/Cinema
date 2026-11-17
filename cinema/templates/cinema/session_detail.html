@@ -2,34 +2,57 @@
 {% load static %}
 {% block title %}Выбор мест — {{ session.movie.title }}{% endblock %}
 {% block content %}
-<div class="booking-breadcrumb"><a href="{% url 'movie_list' %}">Афиша</a> / <a href="{% url 'movie_detail' session.movie.pk %}">{{ session.movie.title }}</a> / Выбор мест</div>
-<h1>Выберите лучшие места</h1>
-<p class="booking-subtitle">{{ session.movie.title }} · {{ session.start_time|date:'d.m.Y H:i' }} · Зал {{ hall.number }}</p>
-{% if promotion %}<p class="booking-promotion">{{ promotion.name }} · Скидка {{ promotion.discount_percent }}% · {{ discounted_price|floatformat:2 }} ₽ за билет</p>{% endif %}
-<div class="booking-layout" id="seat-booking" data-price="{{ unit_price_cents }}">
-<section class="hall-panel" aria-label="Выбор мест в зале">
-<div class="hall-heading"><h2>Схема зала</h2><span>Свободно: <span id="available-seats">{{ session.available_seats }}</span></span></div>
-<p class="hall-scroll-hint">На небольшом экране прокрутите схему в сторону</p>
-<div class="hall-scroll" tabindex="0" role="region" aria-label="Схема зала, горизонтальная прокрутка">
-<div class="hall-map">
-<div class="cinema-screen"><span>ЭКРАН</span></div>
-{% for row in seat_rows %}<div class="hall-row"><span class="row-number" aria-label="Ряд {{ row.number }}">{{ row.number }}</span><div class="row-seats">
-{% for seat in row.seats %}<button type="button" class="hall-seat free" data-row="{{ row.number }}" data-seat="{{ seat }}" aria-label="Ряд {{ row.number }}, место {{ seat }}" aria-pressed="false">{{ seat }}</button>{% endfor %}
-</div><span class="row-number" aria-hidden="true">{{ row.number }}</span></div>{% endfor %}
-</div></div>
-<ul class="seat-legend"><li><i class="legend-free"></i>Свободно</li><li><i class="legend-selected"></i>Выбрано</li><li><i class="legend-occupied">×</i>Занято</li><li><i class="legend-pending">–</i>Ожидает подтверждения</li></ul>
-<noscript><p>Для выбора мест включите JavaScript.</p></noscript>
-</section>
-<aside class="booking-summary"><h2>Ваш выбор</h2>
-<div id="selected-seats-list" class="selected-seat-list"><p>Выберите места на схеме</p></div>
-<p id="price-breakdown" class="price-breakdown"></p>
-<div class="booking-total"><span>Итого</span><strong id="booking-total">0 ₽</strong></div>
-<form id="booking-form" method="post">{% csrf_token %}<input type="hidden" name="selected_seats" id="selected-seats-input"><button type="submit" class="btn booking-submit" id="booking-submit" disabled>Забронировать</button></form>
-<p class="booking-note">{% if user.is_authenticated %}Бронь подтвердит администратор или модератор.{% else %}Для бронирования потребуется войти в аккаунт.{% endif %}</p>
-<button id="clear-selection" class="clear-seats" type="button" disabled>Очистить выбор</button>
-</aside></div>
-<a class="booking-back" href="{% url 'session_list' %}">← К расписанию сеансов</a>
-{{ occupied_seats_json|json_script:'occupied-data' }}
-{{ pending_seats_json|json_script:'pending-data' }}
-<script src="{% static 'cinema/booking.js' %}" defer></script>
+    <div class="booking-breadcrumb"><a href="{% url 'movie_list' %}">Афиша</a> / <a
+            href="{% url 'movie_detail' session.movie.pk %}">{{ session.movie.title }}</a> / Выбор мест
+    </div>
+    <h1>Выберите лучшие места</h1>
+    <p class="booking-subtitle">{{ session.movie.title }} · {{ session.start_time|date:'d.m.Y H:i' }} ·
+        Зал {{ hall.number }}</p>
+    {% if promotion %}<p class="booking-promotion">{{ promotion.name }} · Скидка {{ promotion.discount_percent }}%
+        · {{ discounted_price|floatformat:2 }} ₽ за билет</p>{% endif %}
+    <div class="booking-layout" id="seat-booking" data-price="{{ unit_price_cents }}">
+        <section class="hall-panel" aria-label="Выбор мест в зале">
+            <div class="hall-heading"><h2>Схема зала</h2><span>Свободно: <span
+                    id="available-seats">{{ session.available_seats }}</span></span></div>
+            <p class="hall-scroll-hint">На небольшом экране прокрутите схему в сторону</p>
+            <div class="hall-scroll" tabindex="0" role="region" aria-label="Схема зала, горизонтальная прокрутка">
+                <div class="hall-map">
+                    <div class="cinema-screen"><span>ЭКРАН</span></div>
+                    {% for row in seat_rows %}
+                        <div class="hall-row"><span class="row-number"
+                                                    aria-label="Ряд {{ row.number }}">{{ row.number }}</span>
+                            <div class="row-seats">
+                                {% for seat in row.seats %}
+                                    <button type="button" class="hall-seat free" data-row="{{ row.number }}"
+                                            data-seat="{{ seat }}" aria-label="Ряд {{ row.number }}, место {{ seat }}"
+                                            aria-pressed="false">{{ seat }}</button>{% endfor %}
+                            </div>
+                            <span class="row-number" aria-hidden="true">{{ row.number }}</span></div>{% endfor %}
+                </div>
+            </div>
+            <ul class="seat-legend">
+                <li><i class="legend-free"></i>Свободно</li>
+                <li><i class="legend-selected"></i>Выбрано</li>
+                <li><i class="legend-occupied">×</i>Занято</li>
+                <li><i class="legend-pending">–</i>Ожидает подтверждения</li>
+            </ul>
+            <noscript><p>Для выбора мест включите JavaScript.</p></noscript>
+        </section>
+        <aside class="booking-summary"><h2>Ваш выбор</h2>
+            <div id="selected-seats-list" class="selected-seat-list"><p>Выберите места на схеме</p></div>
+            <p id="price-breakdown" class="price-breakdown"></p>
+            <div class="booking-total"><span>Итого</span><strong id="booking-total">0 ₽</strong></div>
+            <form id="booking-form" method="post">{% csrf_token %}<input type="hidden" name="selected_seats"
+                                                                         id="selected-seats-input">
+                <button type="submit" class="btn booking-submit" id="booking-submit" disabled>Забронировать</button>
+            </form>
+            <p class="booking-note">{% if user.is_authenticated %}Бронь подтвердит администратор или
+                модератор.{% else %}Для бронирования потребуется войти в аккаунт.{% endif %}</p>
+            <button id="clear-selection" class="clear-seats" type="button" disabled>Очистить выбор</button>
+        </aside>
+    </div>
+    <a class="booking-back" href="{% url 'session_list' %}">← К расписанию сеансов</a>
+    {{ occupied_seats_json|json_script:'occupied-data' }}
+    {{ pending_seats_json|json_script:'pending-data' }}
+    <script src="{% static 'cinema/booking.js' %}" defer></script>
 {% endblock %}
