@@ -2,57 +2,60 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # Главная - фильмы
+    path('admin-panel/user/<int:pk>/toggle-moderator/', views.admin_user_toggle_moderator, name='admin_user_toggle_moderator'),
+    path('ticket/<int:pk>/qr/', views.ticket_qr, name='ticket_qr'),
+    path('ticket/verify/<uuid:token>/', views.ticket_verify, name='ticket_verify'),
+    # Р“Р»Р°РІРЅР°СЏ - С„РёР»СЊРјС‹
     path('', views.movie_list, name='movie_list'),
     path('register/', views.register, name='register'),
 
-    # Фильмы
+    # Р¤РёР»СЊРјС‹
     path('movies/<int:pk>/', views.movie_detail, name='movie_detail'),
     path('movies/create/', views.movie_create, name='movie_create'),
     path('movies/<int:pk>/edit/', views.movie_edit, name='movie_edit'),
     path('movies/<int:pk>/delete/', views.movie_delete, name='movie_delete'),
 
-    # Отзывы
+    # РћС‚Р·С‹РІС‹
     path('movies/<int:movie_pk>/review/create/', views.review_create, name='review_create'),
     path('review/<int:pk>/edit/', views.review_edit, name='review_edit'),
     path('review/<int:pk>/delete/', views.review_delete, name='review_delete'),
 
-    # Режиссёры
+    # Р РµР¶РёСЃСЃС‘СЂС‹
     path('directors/', views.director_list, name='director_list'),
     path('directors/<int:pk>/', views.director_detail, name='director_detail'),
     path('directors/create/', views.director_create, name='director_create'),
     path('directors/<int:pk>/edit/', views.director_edit, name='director_edit'),
     path('directors/<int:pk>/delete/', views.director_delete, name='director_delete'),
 
-    # Сеансы
+    # РЎРµР°РЅСЃС‹
     path('sessions/', views.session_list, name='session_list'),
     path('sessions/<int:pk>/', views.session_detail, name='session_detail'),
     path('sessions/create/', views.session_create, name='session_create'),
     path('sessions/<int:pk>/edit/', views.session_edit, name='session_edit'),
     path('sessions/<int:pk>/delete/', views.session_delete, name='session_delete'),
 
-    # Бронирования
+    # Р‘СЂРѕРЅРёСЂРѕРІР°РЅРёСЏ
     path('my-bookings/', views.my_bookings, name='my_bookings'),
     path('booking/<int:pk>/cancel/', views.cancel_booking, name='cancel_booking'),
 
-    # Залы
+    # Р—Р°Р»С‹
     path('halls/', views.hall_list, name='hall_list'),
     path('halls/create/', views.hall_create, name='hall_create'),
     path('halls/<int:pk>/edit/', views.hall_edit, name='hall_edit'),
     path('halls/<int:pk>/delete/', views.hall_delete, name='hall_delete'),
 
-    # Пользователи
+    # РџРѕР»СЊР·РѕРІР°С‚РµР»Рё
     path('users/', views.user_list, name='user_list'),
     path('ticket/<int:pk>/', views.ticket_detail, name='ticket_detail'),
 
-    # Акции
+    # РђРєС†РёРё
     path('promotions/', views.promotion_list, name='promotion_list'),
     path('promotions/<int:pk>/', views.promotion_detail, name='promotion_detail'),
     path('promotions/create/', views.promotion_create, name='promotion_create'),
     path('promotions/<int:pk>/edit/', views.promotion_edit, name='promotion_edit'),
     path('promotions/<int:pk>/delete/', views.promotion_delete, name='promotion_delete'),
 
-    # Админ панель (веб-интерфейс)
+    # РђРґРјРёРЅ РїР°РЅРµР»СЊ (РІРµР±-РёРЅС‚РµСЂС„РµР№СЃ)
     path('admin-panel/', views.admin_panel, name='admin_panel'),
     path('admin-panel/bookings/', views.admin_bookings, name='admin_bookings'),
     path('admin-panel/booking/<int:pk>/confirm/', views.admin_booking_confirm, name='admin_booking_confirm'),

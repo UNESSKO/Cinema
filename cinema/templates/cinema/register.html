@@ -3,14 +3,14 @@
 {% block content %}
 
 <div style="max-width: 500px; margin: 0 auto;">
-    <h1 style="text-align: center;">📝 Регистрация</h1>
+    <h1 style="text-align: center;">Регистрация</h1>
 
     <form method="post" style="margin-top: 30px;">
         {% csrf_token %}
 
         {% if form.errors %}
             <div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
-                <strong>⚠️ Ошибка при регистрации:</strong>
+                <strong>Ошибка при регистрации:</strong>
                 <ul style="margin: 10px 0 0 20px;">
                     {% for field in form %}
                         {% for error in field.errors %}

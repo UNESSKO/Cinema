@@ -1,3 +1,9 @@
+from datetime import date, time
+from io import BytesIO
+from django.http import HttpResponse
+from django.urls import reverse
+from django.db.models import Q
+import qrcode
 from django.db import IntegrityError, transaction
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login
@@ -5,7 +11,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Movie, Session, Hall, User, Director, Booking, Review, Ticket, Promotion
+from .models import Movie, Session, Hall, User, Director, Booking, Review, Ticket, Promotion, Genre
 from .forms import RegisterForm, MovieForm, SessionForm, HallForm, DirectorForm, ReviewForm, BookingForm, PromotionForm
 import json
 
@@ -30,7 +36,29 @@ def register(request):
 
 def movie_list(request):
     movies = Movie.objects.select_related('director').all()
-    return render(request, 'cinema/movie_list.html', {'movies': movies})
+    query = request.GET.get('q', '').strip()
+    genre = request.GET.get('genre', '')
+    day = request.GET.get('date', '')
+    start = request.GET.get('time', '')
+    if query:
+        movies = movies.filter(title__icontains=query)
+    if genre.isdigit():
+        movies = movies.filter(genres__pk=int(genre))
+    session_filters = {}
+    try:
+        if day:
+            session_filters['sessions__start_time__date'] = date.fromisoformat(day)
+        if start:
+            session_filters['sessions__start_time__time__gte'] = time.fromisoformat(start)
+    except ValueError:
+        messages.error(request, 'Некорректная дата или время.')
+        movies = movies.none()
+    if session_filters:
+        movies = movies.filter(**session_filters)
+    return render(request, 'cinema/movie_list.html', {
+        'movies': movies.distinct(), 'genres': Genre.objects.all(),
+        'filters': {'q': query, 'genre': genre, 'date': day, 'time': start},
+    })
 
 
 def movie_detail(request, pk):
@@ -132,7 +160,7 @@ def review_edit(request, pk):
     review = get_object_or_404(Review, pk=pk)
 
     # Проверяем, что отзыв принадлежит текущему пользователю
-    if review.user != request.user and not request.user.is_staff:
+    if review.user != request.user and not request.user.can_moderate:
         messages.error(request, 'Вы можете редактировать только свои отзывы.')
         return redirect('movie_detail', pk=review.movie.pk)
 
@@ -154,7 +182,7 @@ def review_delete(request, pk):
     review = get_object_or_404(Review, pk=pk)
     movie_pk = review.movie.pk
 
-    if review.user != request.user and not request.user.is_staff:
+    if review.user != request.user and not request.user.can_moderate:
         messages.error(request, 'Вы можете удалять только свои отзывы.')
         return redirect('movie_detail', pk=movie_pk)
 
@@ -236,15 +264,15 @@ def session_detail(request, pk):
 
             if booked_count > 0:
                 messages.success(request,
-                                 f'✅ {booked_count} место(а) забронировано! Ожидайте подтверждения администратора.')
+                                 f' {booked_count} место(а) забронировано! Ожидайте подтверждения администратора.')
             if errors:
                 for error in errors:
-                    messages.error(request, f'❌ {error}')
+                    messages.error(request, f' {error}')
 
             if booked_count > 0:
                 return redirect('my_bookings')
         else:
-            messages.error(request, '❌ Не выбрано ни одного места')
+            messages.error(request, ' Не выбрано ни одного места')
 
     return render(request, 'cinema/session_detail.html', {
         'session': session,
@@ -265,7 +293,7 @@ def ticket_detail(request, pk):
     ticket = get_object_or_404(Ticket, pk=pk)
 
     # Проверяем, что билет принадлежит текущему пользователю
-    if ticket.booking.user != request.user and not request.user.is_staff:
+    if ticket.booking.user != request.user and not request.user.can_moderate:
         messages.error(request, 'У вас нет доступа к этому билету')
         return redirect('my_bookings')
 
@@ -287,7 +315,7 @@ def my_bookings(request):
 def cancel_booking(request, pk):
     booking = get_object_or_404(Booking, pk=pk)
 
-    if booking.user != request.user and not request.user.is_staff:
+    if booking.user != request.user and not request.user.can_moderate:
         messages.error(request, 'Вы можете отменять только свои бронирования.')
         return redirect('my_bookings')
 
@@ -426,7 +454,7 @@ def session_delete(request, pk):
         # Отменяем бронирования и удаляем сеанс
         session.delete()
         messages.success(request,
-                         f'✅ Сеанс "{session.movie.title}" от {session.start_time.strftime("%d.%m.%Y %H:%M")} успешно удалён. {active_bookings_count} бронирований отменено.')
+                         f' Сеанс "{session.movie.title}" от {session.start_time.strftime("%d.%m.%Y %H:%M")} успешно удалён. {active_bookings_count} бронирований отменено.')
         return redirect('session_list')
 
     return render(request, 'cinema/confirm_delete.html', {
@@ -435,7 +463,7 @@ def session_delete(request, pk):
         'cancel_url': 'session_list',
         'cancel_id': None,
         'can_delete': True,
-        'warning_message': f'⚠️ ВНИМАНИЕ! У этого сеанса {active_bookings_count} активных бронирований. После удаления сеанса все эти бронирования будут автоматически отменены.'
+        'warning_message': f' ВНИМАНИЕ! У этого сеанса {active_bookings_count} активных бронирований. После удаления сеанса все эти бронирования будут автоматически отменены.'
     })
 
 
@@ -520,7 +548,7 @@ def promotion_create(request):
         form = PromotionForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, f'✅ Акция "{form.instance.name}" успешно создана!')
+            messages.success(request, f' Акция "{form.instance.name}" успешно создана!')
             return redirect('promotion_list')
     else:
         form = PromotionForm()
@@ -536,7 +564,7 @@ def promotion_edit(request, pk):
         form = PromotionForm(request.POST, instance=promotion)
         if form.is_valid():
             form.save()
-            messages.success(request, f'✅ Акция "{promotion.name}" успешно обновлена!')
+            messages.success(request, f' Акция "{promotion.name}" успешно обновлена!')
             return redirect('promotion_list')
     else:
         form = PromotionForm(instance=promotion)
@@ -551,7 +579,7 @@ def promotion_delete(request, pk):
 
     if request.method == 'POST':
         promotion.delete()
-        messages.success(request, f'✅ Акция "{promotion.name}" успешно удалена!')
+        messages.success(request, f' Акция "{promotion.name}" успешно удалена!')
         return redirect('promotion_list')
 
     return render(request, 'cinema/confirm_delete.html', {
@@ -587,7 +615,7 @@ def admin_panel(request):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.can_moderate)
 def admin_bookings(request):
     """Управление бронированиями для администратора"""
     bookings = Booking.objects.select_related('user', 'session', 'session__movie', 'session__hall').all().order_by(
@@ -596,7 +624,7 @@ def admin_bookings(request):
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.can_moderate)
 def admin_booking_confirm(request, pk):
     """Подтверждение бронирования (создание билета)"""
     booking = get_object_or_404(Booking, pk=pk)
@@ -605,16 +633,16 @@ def admin_booking_confirm(request, pk):
         if booking.status == 'pending':
             booking.status = 'confirmed'
             booking.save()
-            messages.success(request, f'✅ Бронирование #{booking.id} подтверждено. Билет создан!')
+            messages.success(request, f' Бронирование #{booking.id} подтверждено. Билет создан!')
         else:
-            messages.error(request, f'❌ Бронирование #{booking.id} уже имеет статус "{booking.get_status_display()}"')
+            messages.error(request, f' Бронирование #{booking.id} уже имеет статус "{booking.get_status_display()}"')
         return redirect('admin_bookings')
 
     return render(request, 'cinema/admin_booking_confirm.html', {'booking': booking})
 
 
 @login_required
-@user_passes_test(is_admin)
+@user_passes_test(lambda u: u.can_moderate)
 def admin_booking_cancel(request, pk):
     """Отмена бронирования администратором"""
     booking = get_object_or_404(Booking, pk=pk)
@@ -624,9 +652,9 @@ def admin_booking_cancel(request, pk):
             old_status = booking.status
             booking.status = 'cancelled'
             booking.save()
-            messages.success(request, f'✅ Бронирование #{booking.id} отменено (было: {booking.get_status_display()})')
+            messages.success(request, f' Бронирование #{booking.id} отменено (было: {booking.get_status_display()})')
         else:
-            messages.error(request, f'❌ Бронирование #{booking.id} уже отменено')
+            messages.error(request, f' Бронирование #{booking.id} уже отменено')
         return redirect('admin_bookings')
 
     return render(request, 'cinema/admin_booking_cancel.html', {'booking': booking})
@@ -648,12 +676,54 @@ def admin_user_toggle_staff(request, pk):
 
     if request.method == 'POST':
         if user == request.user:
-            messages.error(request, '❌ Вы не можете изменить свой собственный статус администратора!')
+            messages.error(request, ' Вы не можете изменить свой собственный статус администратора!')
         else:
             user.is_staff = not user.is_staff
             user.save()
             status = 'администратором' if user.is_staff else 'обычным пользователем'
-            messages.success(request, f'✅ Пользователь {user.username} теперь {status}')
+            messages.success(request, f' Пользователь {user.username} теперь {status}')
         return redirect('admin_users')
 
     return render(request, 'cinema/admin_user_toggle.html', {'user': user})
+
+@login_required
+def ticket_qr(request, pk):
+    ticket = get_object_or_404(Ticket.objects.select_related('booking'), pk=pk)
+    if ticket.booking.user_id != request.user.pk and not request.user.can_moderate:
+        return HttpResponse(status=403)
+    if not ticket.is_valid:
+        return HttpResponse(status=410)
+    target = request.build_absolute_uri(reverse('ticket_verify', args=[ticket.verification_token]))
+    buffer = BytesIO()
+    qrcode.make(target).save(buffer, format='PNG')
+    response = HttpResponse(buffer.getvalue(), content_type='image/png')
+    response['Cache-Control'] = 'private, no-store'
+    return response
+
+
+@login_required
+@user_passes_test(lambda u: u.can_moderate)
+def ticket_verify(request, token):
+    with transaction.atomic():
+        ticket = get_object_or_404(Ticket.objects.select_for_update(), verification_token=token)
+        booking = Booking.objects.select_for_update().get(pk=ticket.booking_id)
+        ticket.booking = booking
+        if request.method == 'POST':
+            if ticket.is_valid:
+                ticket.used_at = timezone.now()
+                ticket.save(update_fields=['used_at'])
+                messages.success(request, 'Проход зарегистрирован.')
+            else:
+                messages.error(request, 'Билет недействителен или уже использован.')
+    return render(request, 'cinema/ticket_verify.html', {'ticket': ticket})
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_user_toggle_moderator(request, pk):
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+    target = get_object_or_404(User, pk=pk, is_staff=False, is_superuser=False)
+    target.is_moderator = not target.is_moderator
+    target.save(update_fields=['is_moderator'])
+    return redirect('admin_users')

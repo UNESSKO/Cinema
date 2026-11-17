@@ -3,7 +3,7 @@
 {% block title %}Удаление {{ type_name }}{% endblock %}
 {% block content %}
 <div class="delete-confirm" style="text-align: center; padding: 40px;">
-    <h1 style="color: #e74c3c;">⚠️ Подтверждение удаления</h1>
+    <h1 style="color: #e74c3c;">Подтверждение удаления</h1>
 
     {% if warning_message %}
     <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin: 20px auto; max-width: 500px;">
@@ -28,7 +28,7 @@
         </form>
     {% else %}
         <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin: 20px auto; max-width: 500px;">
-            <strong>⛔ Невозможно удалить {{ type_name }}!</strong><br><br>
+            <strong>Невозможно удалить {{ type_name }}!</strong><br><br>
             {{ block_reason }}
         </div>
         <div style="margin-top: 20px;">

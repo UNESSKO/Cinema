@@ -2,10 +2,10 @@
 {% block title %}Управление бронированиями{% endblock %}
 {% block content %}
 
-<h1>📋 Управление бронированиями</h1>
+<h1>Управление бронированиями</h1>
 
 <div style="margin-bottom: 20px;">
-    <a href="{% url 'admin_panel' %}" class="btn">← Назад в панель администратора</a>
+    {% if user.is_staff %}<a href="{% url 'admin_panel' %}" class="btn">← Назад в панель администратора</a>{% endif %}
 </div>
 
 {% if bookings %}
@@ -44,11 +44,11 @@
                 </td>
                 <td style="padding: 10px;">
                     {% if booking.status == 'pending' %}
-                        <span style="background: #f39c12; color: white; padding: 3px 8px; border-radius: 4px; display: inline-block; white-space: nowrap; vertical-align: middle; line-height: 1.4;">⏳ Ожидает</span>
+                        <span style="background: #f39c12; color: white; padding: 3px 8px; border-radius: 4px; display: inline-block; white-space: nowrap; vertical-align: middle; line-height: 1.4;">Ожидает</span>
                     {% elif booking.status == 'confirmed' %}
-                        <span style="background: #2ecc71; color: white; padding: 3px 8px; border-radius: 4px; display: inline-block; white-space: nowrap; vertical-align: middle; line-height: 1.4;">✅ Подтверждено</span>
+                        <span style="background: #2ecc71; color: white; padding: 3px 8px; border-radius: 4px; display: inline-block; white-space: nowrap; vertical-align: middle; line-height: 1.4;">Подтверждено</span>
                     {% else %}
-                        <span style="background: #e74c3c; color: white; padding: 3px 8px; border-radius: 4px; display: inline-block; white-space: nowrap; vertical-align: middle; line-height: 1.4;">❌ Отменено</span>
+                        <span style="background: #e74c3c; color: white; padding: 3px 8px; border-radius: 4px; display: inline-block; white-space: nowrap; vertical-align: middle; line-height: 1.4;">Отменено</span>
                     {% endif %}
                 </td>
                 <td style="padding: 10px;">{{ booking.created_at|date:"d.m.Y H:i" }}</td>

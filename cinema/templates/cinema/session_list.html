@@ -2,7 +2,7 @@
 {% block title %}Сеансы{% endblock %}
 {% block content %}
 
-<h1>🎫 Расписание сеансов</h1>
+<h1>Расписание сеансов</h1>
 
 {% if user.is_staff %}
     <a href="{% url 'session_create' %}" class="btn btn-success">➕ Добавить сеанс</a>

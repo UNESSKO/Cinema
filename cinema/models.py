@@ -8,6 +8,12 @@ import uuid
 
 
 class User(AbstractUser):
+    is_moderator = models.BooleanField('Модератор', default=False)
+
+    @property
+    def can_moderate(self):
+        return self.is_active and (self.is_moderator or self.is_staff or self.is_superuser)
+
     birth_date = models.DateField('Дата рождения', null=True, blank=True)
 
     groups = models.ManyToManyField(
@@ -235,6 +241,13 @@ class Booking(models.Model):
 
 
 class Ticket(models.Model):
+    verification_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    used_at = models.DateTimeField(null=True, blank=True, editable=False)
+
+    @property
+    def is_valid(self):
+        return self.booking.status == "confirmed" and self.used_at is None
+
     booking = models.OneToOneField(Booking, on_delete=models.CASCADE, verbose_name='Бронирование', related_name='ticket')
     qr_code = models.CharField('QR-код', max_length=255, blank=True, null=True)  # Пока оставляем nullable
     purchase_date = models.DateTimeField('Дата покупки', auto_now_add=True)

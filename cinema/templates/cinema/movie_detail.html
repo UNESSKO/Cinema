@@ -9,7 +9,7 @@
             <img src="{{ movie.poster.url }}" alt="{{ movie.title }}" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
         {% else %}
             <div style="width: 100%; height: 450px; background: #2c3e50; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                <span style="font-size: 80px; color: white;">🎬</span>
+                <span style="font-size: 80px; color: white;"></span>
             </div>
         {% endif %}
     </div>
@@ -19,19 +19,19 @@
         <h1 style="margin-top: 0;">{{ movie.title }}</h1>
 
         <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
-            <p><strong>🎬 Режиссёр:</strong>
+            <p><strong>Режиссёр:</strong>
                 {% if movie.director %}
                     <a href="{% url 'director_detail' movie.director.id %}">{{ movie.director.name }}</a>
                 {% else %}
                     Не указан
                 {% endif %}
             </p>
-            <p><strong>📅 Год выпуска:</strong> {{ movie.release_year }}</p>
-            <p><strong>⏱️ Длительность:</strong> {{ movie.duration_min }} мин</p>
-            <p><strong>⭐ Рейтинг:</strong> {{ movie.average_rating|floatformat:1 }}/5
+            <p><strong>Год выпуска:</strong> {{ movie.release_year }}</p>
+            <p><strong>Длительность:</strong> {{ movie.duration_min }} мин</p>
+            <p><strong>Рейтинг:</strong> {{ movie.average_rating|floatformat:1 }}/5
                 <span style="color: #888; font-size: 14px;">(на основе {{ movie.reviews.count }} отзывов)</span>
             </p>
-            <p><strong>🎭 Жанры:</strong>
+            <p><strong>Жанры:</strong>
                 {% for genre in movie.genres.all %}
                     {{ genre.name }}{% if not forloop.last %}, {% endif %}
                 {% endfor %}
@@ -39,7 +39,7 @@
         </div>
 
         <div style="margin-top: 20px;">
-            <h3>📖 Описание</h3>
+            <h3>Описание</h3>
             <p style="line-height: 1.6;">{{ movie.description }}</p>
         </div>
     </div>
@@ -49,7 +49,7 @@
 
     {% if movie.moviepromotion_set.all %}
     <div style="margin-top: 20px; background: #fff3cd; padding: 15px; border-radius: 8px;">
-        <h3>🎁 Акции на этот фильм</h3>
+        <h3>Акции на этот фильм</h3>
         {% for mp in movie.moviepromotion_set.all %}
             {% if mp.promotion.is_currently_active %}
                 <div style="display: inline-block; background: #2ecc71; color: white; padding: 5px 10px; border-radius: 4px; margin-right: 10px;">
@@ -60,7 +60,7 @@
     </div>
 {% endif %}
 
-<h2>🎫 Ближайшие сеансы</h2>
+<h2>Ближайшие сеансы</h2>
 {% if sessions %}
     <table style="width: 100%; border-collapse: collapse;">
         <thead>
@@ -100,7 +100,7 @@
     <p>Нет запланированных сеансов</p>
 {% endif %}
 
-<h2 style="margin-top: 40px;">📝 Отзывы</h2>
+<h2 style="margin-top: 40px;">Отзывы</h2>
 {% if user.is_authenticated and not user_review %}
     <a href="{% url 'review_create' movie.id %}" class="btn btn-success" style="margin-bottom: 20px;">➕ Оставить отзыв</a>
 {% endif %}
@@ -111,13 +111,13 @@
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
             <p><strong>{{ review.user.username }}</strong> —
                 {% for i in "12345"|make_list %}
-                    {% if forloop.counter <= review.rating %}⭐{% else %}☆{% endif %}
+                    {% if forloop.counter <= review.rating %}{% else %}{% endif %}
                 {% endfor %}
             </p>
             <p style="color: #888; font-size: 12px;">{{ review.created_at|date:"d.m.Y H:i" }}</p>
         </div>
         <p style="margin-top: 10px;">{{ review.comment }}</p>
-        {% if user == review.user or user.is_staff %}
+        {% if user == review.user or user.can_moderate %}
             <div style="margin-top: 10px;">
                 <a href="{% url 'review_edit' review.id %}" class="btn btn-warning" style="padding: 4px 8px; font-size: 12px;">✏️ Редактировать</a>
                 <a href="{% url 'review_delete' review.id %}" class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="return confirm('Удалить отзыв?')">🗑️ Удалить</a>

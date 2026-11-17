@@ -1,7 +1,7 @@
 {% extends 'cinema/base.html' %}
 {% block title %}Кинозалы{% endblock %}
 {% block content %}
-<h1>🏢 Кинозалы</h1>
+<h1>Кинозалы</h1>
 {% if user.is_staff %}
     <a href="{% url 'hall_create' %}" class="btn btn-success">➕ Добавить зал</a>
 {% endif %}

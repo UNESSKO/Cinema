@@ -8,26 +8,26 @@
             <img src="{{ director.photo.url }}" alt="{{ director.name }}" class="director-detail-photo-img">
         {% else %}
             <div class="director-photo-placeholder" style="width: 250px; height: 250px;">
-                <span style="font-size: 100px;">🎬</span>
+                <span style="font-size: 100px;"></span>
             </div>
         {% endif %}
     </div>
     <div class="director-detail-info">
         <h1>{{ director.name }}</h1>
         {% if director.birth_date %}
-            <p><strong>📅 Дата рождения:</strong> {{ director.birth_date|date:"d.m.Y" }}</p>
+            <p><strong>Дата рождения:</strong> {{ director.birth_date|date:"d.m.Y" }}</p>
         {% endif %}
         {% if director.birth_place %}
-            <p><strong>📍 Место рождения:</strong> {{ director.birth_place }}</p>
+            <p><strong>Место рождения:</strong> {{ director.birth_place }}</p>
         {% endif %}
         {% if director.biography %}
-            <p><strong>📖 Биография:</strong></p>
+            <p><strong>Биография:</strong></p>
             <p>{{ director.biography|linebreaks }}</p>
         {% endif %}
     </div>
 </div>
 
-<h2 style="margin-top: 30px;">🎥 Фильмы режиссёра</h2>
+<h2 style="margin-top: 30px;">Фильмы режиссёра</h2>
 {% if movies %}
     <div class="movies-grid">
         {% for movie in movies %}
@@ -36,11 +36,11 @@
                 <img src="{{ movie.poster.url }}" alt="{{ movie.title }}" class="movie-poster">
             {% else %}
                 <div class="movie-poster-placeholder">
-                    <span>🎬</span>
+                    <span></span>
                 </div>
             {% endif %}
             <h4><a href="{% url 'movie_detail' movie.id %}">{{ movie.title }}</a></h4>
-            <p>{{ movie.release_year }} | ⭐ {{ movie.rating }}</p>
+            <p>{{ movie.release_year }} |  {{ movie.rating }}</p>
         </div>
         {% endfor %}
     </div>

@@ -7,9 +7,9 @@ from .models import User, Genre, Director, Movie, MovieGenre, Hall, Session, Boo
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    list_display = ('username', 'email', 'birth_date', 'is_staff')
+    list_display = ('username', 'email', 'birth_date', 'is_staff', 'is_moderator')
     fieldsets = UserAdmin.fieldsets + (
-        ('Дополнительная информация', {'fields': ('birth_date',)}),
+        ('Дополнительная информация', {'fields': ('birth_date', 'is_moderator')}),
     )
 
 

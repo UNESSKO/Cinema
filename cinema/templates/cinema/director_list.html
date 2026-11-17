@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}Режиссёры{% endblock %}
 {% block content %}
-<h1>🎬 Режиссёры</h1>
+<h1>Режиссёры</h1>
 {% if user.is_staff %}
     <a href="{% url 'director_create' %}" class="btn btn-success">➕ Добавить режиссёра</a>
 {% endif %}
@@ -14,7 +14,7 @@
             <img src="{{ director.photo.url }}" alt="{{ director.name }}" class="director-photo">
         {% else %}
             <div class="director-photo-placeholder">
-                <span>🎬</span>
+                <span></span>
             </div>
         {% endif %}
         <h3 class="director-name">

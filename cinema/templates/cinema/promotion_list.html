@@ -2,7 +2,7 @@
 {% block title %}Акции{% endblock %}
 {% block content %}
 
-<h1>🎁 Акции и скидки</h1>
+<h1>Акции и скидки</h1>
 
 {% if user.is_staff %}
     <a href="{% url 'promotion_create' %}" class="btn btn-success">➕ Добавить акцию</a>
@@ -31,7 +31,7 @@
                 <p><strong>Скидка:</strong> -{{ promotion.discount_percent }}%</p>
                 <p><strong>Период:</strong> {{ promotion.start_date|date:"d.m.Y" }} - {{ promotion.end_date|date:"d.m.Y" }}</p>
                 <p style="{% if not is_active %}color: #888;{% endif %}">{{ promotion.description|truncatechars:100 }}</p>
-                <p><strong>🎬 Фильмов:</strong> {{ promotion.movies.count }}</p>
+                <p><strong>Фильмов:</strong> {{ promotion.movies.count }}</p>
                 {% if user.is_staff %}
                     <div style="margin-top: 10px;">
                         <a href="{% url 'promotion_edit' promotion.id %}" class="btn btn-warning" style="padding: 4px 8px; font-size: 12px;">✏️</a>

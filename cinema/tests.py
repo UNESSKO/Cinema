@@ -66,3 +66,49 @@ class BlobStorageTests(TestCase):
         with patch('cinema.storage.blob.head_blob', side_effect=ConnectionError('offline')):
             with self.assertRaises(ConnectionError):
                 VercelBlobStorage().exists('missing.jpg')
+
+
+class ModerationTicketTests(BookingTests):
+    def test_moderator_can_confirm_but_not_manage_users(self):
+        self.user.is_moderator = True
+        self.user.save()
+        self.client.force_login(self.user)
+        booking = self.book()
+        self.assertEqual(self.client.post(f'/admin-panel/booking/{booking.pk}/confirm/').status_code, 302)
+        booking.refresh_from_db()
+        self.assertEqual(booking.status, 'confirmed')
+        self.assertEqual(self.client.get('/admin-panel/users/').status_code, 302)
+        self.assertEqual(self.client.get('/movies/create/').status_code, 302)
+
+    def test_cancelled_ticket_cannot_be_used(self):
+        booking = self.book(status='confirmed')
+        ticket = booking.ticket
+        booking.status = 'cancelled'
+        booking.save()
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(f'/ticket/{ticket.pk}/qr/').status_code, 410)
+        self.user.is_moderator = True
+        self.user.save()
+        self.client.post(f'/ticket/verify/{ticket.verification_token}/')
+        ticket.refresh_from_db()
+        self.assertIsNone(ticket.used_at)
+
+    def test_ticket_can_be_used_once_and_qr_is_png(self):
+        ticket = self.book(status='confirmed').ticket
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(f'/ticket/{ticket.pk}/qr/')['Content-Type'], 'image/png')
+        self.user.is_moderator = True
+        self.user.save()
+        url = f'/ticket/verify/{ticket.verification_token}/'
+        self.client.post(url)
+        ticket.refresh_from_db()
+        used = ticket.used_at
+        self.assertIsNotNone(used)
+        self.client.post(url)
+        ticket.refresh_from_db()
+        self.assertEqual(ticket.used_at, used)
+
+    def test_filters(self):
+        self.assertContains(self.client.get('/?q=Test'), 'Test')
+        self.assertNotContains(self.client.get('/?q=Other'), '>Test<')
+        self.assertEqual(self.client.get('/?date=wrong').status_code, 200)

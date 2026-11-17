@@ -2,7 +2,7 @@
 {% block title %}Управление пользователями{% endblock %}
 {% block content %}
 
-<h1>👥 Управление пользователями</h1>
+<h1>Управление пользователями</h1>
 
 <div style="margin-bottom: 20px;">
     <a href="{% url 'admin_panel' %}" class="btn">← Назад в панель администратора</a>
@@ -31,14 +31,18 @@
                 <td style="padding: 10px;">{{ user.date_joined|date:"d.m.Y" }}</td>
                 <td style="padding: 10px;">
                     {% if user.is_superuser %}
-                        <span style="background: #e74c3c; color: white; padding: 3px 8px; border-radius: 4px;">👑 Суперпользователь</span>
+                        <span style="background: #e74c3c; color: white; padding: 3px 8px; border-radius: 4px;">Суперпользователь</span>
                     {% elif user.is_staff %}
-                        <span style="background: #3498db; color: white; padding: 3px 8px; border-radius: 4px;">🛡️ Администратор</span>
+                        <span style="background: #3498db; color: white; padding: 3px 8px; border-radius: 4px;">Администратор</span>
+                    {% elif user.is_moderator %}<span>Модератор</span>
                     {% else %}
-                        <span style="background: #95a5a6; color: white; padding: 3px 8px; border-radius: 4px;">👤 Пользователь</span>
+                        <span style="background: #95a5a6; color: white; padding: 3px 8px; border-radius: 4px;">Пользователь</span>
                     {% endif %}
                 </td>
                 <td style="padding: 10px;">
+                    {% if not user.is_staff and not user.is_superuser %}
+                    <form method="post" action="{% url 'admin_user_toggle_moderator' user.pk %}">{% csrf_token %}<button class="btn" type="submit">{% if user.is_moderator %}Снять модератора{% else %}Назначить модератором{% endif %}</button></form>
+                    {% endif %}
                     {% if not user.is_superuser %}
                         <a href="{% url 'admin_user_toggle_staff' user.id %}" class="btn btn-warning" style="padding: 4px 8px; font-size: 12px;">
                             {% if user.is_staff %}🔽 Снять администратора{% else %}🔼 Назначить администратором{% endif %}

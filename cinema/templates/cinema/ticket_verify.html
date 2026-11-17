@@ -1,0 +1,9 @@
+{% extends 'cinema/base.html' %}
+{% block title %}Проверка билета{% endblock %}
+{% block content %}<h1>Проверка билета #{{ ticket.pk }}</h1>
+<p>{{ ticket.booking.session.movie.title }} · {{ ticket.booking.session.start_time|date:'d.m.Y H:i' }}</p>
+<p>Зал {{ ticket.booking.session.hall.number }} · Ряд {{ ticket.booking.seat_row }}, место {{ ticket.booking.seat_number }}</p>
+{% if ticket.is_valid %}<p class="messages success">Билет действителен</p><form method="post">{% csrf_token %}<button class="btn" type="submit">Подтвердить проход</button></form>
+{% elif ticket.used_at %}<p class="messages error">Билет уже использован: {{ ticket.used_at }}</p>
+{% else %}<p class="messages error">Билет отменён. Проход запрещён.</p>{% endif %}
+{% endblock %}

@@ -2,7 +2,7 @@
 {% block title %}Бронирование - {{ session.movie.title }}{% endblock %}
 {% block content %}
 
-<h1>🎫 Бронирование билетов</h1>
+<h1>Бронирование билетов</h1>
 
 {% if messages %}
     {% for message in messages %}
@@ -12,20 +12,20 @@
 
 {% if promotion %}
     <div style="background: #fff3cd; border-left: 4px solid #f39c12; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-        <h3 style="margin: 0 0 10px 0;">🎁 Акция: {{ promotion.name }}</h3>
+        <h3 style="margin: 0 0 10px 0;">Акция: {{ promotion.name }}</h3>
         <p style="margin: 0;">Скидка {{ promotion.discount_percent }}% на этот фильм!</p>
         <p style="margin: 5px 0 0 0;">
             <span style="text-decoration: line-through; color: #888;">{{ original_price }} ₽</span>
-            <strong style="color: #2ecc71; font-size: 18px;"> → {{ discounted_price|floatformat:0 }} ₽</strong>
+            <strong style="color: #2ecc71; font-size: 18px;">→ {{ discounted_price|floatformat:0 }} ₽</strong>
         </p>
     </div>
 {% endif %}
 
 <div style="background: #f0f0f0; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
     <h2>{{ session.movie.title }}</h2>
-    <p><strong>📅 Дата и время:</strong> {{ session.start_time|date:"d.m.Y H:i" }}</p>
-    <p><strong>🏢 Зал:</strong> {{ session.hall.number }}</p>
-    <p><strong>💰 Цена билета:</strong>
+    <p><strong>Дата и время:</strong> {{ session.start_time|date:"d.m.Y H:i" }}</p>
+    <p><strong>Зал:</strong> {{ session.hall.number }}</p>
+    <p><strong>Цена билета:</strong>
         {% if promotion %}
             <span style="text-decoration: line-through; color: #888;">{{ original_price }} ₽</span>
             <strong style="color: #2ecc71;">{{ discounted_price|floatformat:0 }} ₽</strong>
@@ -34,13 +34,13 @@
             {{ original_price }} ₽
         {% endif %}
     </p>
-    <p><strong>💺 Свободных мест:</strong> <span id="available-seats">{{ session.available_seats }}</span>/{{ session.hall.capacity }}</p>
+    <p><strong>Свободных мест:</strong> <span id="available-seats">{{ session.available_seats }}</span>/{{ session.hall.capacity }}</p>
 </div>
 
 <hr>
 
 <h3>Схема зала</h3>
-<p style="text-align: center; margin: 10px 0; padding: 10px; background: #2c3e50; color: white; border-radius: 8px;">🎬 ЭКРАН 🎬</p>
+<p style="text-align: center; margin: 10px 0; padding: 10px; background: #2c3e50; color: white; border-radius: 8px;">ЭКРАН </p>
 
 <div style="overflow-x: auto;">
     <table style="border-collapse: collapse; margin: 20px auto;">
@@ -72,9 +72,9 @@
 </div>
 
 <div style="text-align: center; margin: 10px 0;">
-    <p>🔴 <span style="color: #e74c3c; font-weight: bold;">Красный (❌)</span> - подтверждено |
-       🟠 <span style="color: #f39c12; font-weight: bold;">Оранжевый (⏳)</span> - ожидает подтверждения |
-       🟢 <span style="color: #2ecc71; font-weight: bold;">Зелёный (○)</span> - свободно
+    <p><span style="color: #e74c3c; font-weight: bold;">Красный ()</span> - подтверждено |
+        <span style="color: #f39c12; font-weight: bold;">Оранжевый ()</span> - ожидает подтверждения |
+        <span style="color: #2ecc71; font-weight: bold;">Зелёный (○)</span> - свободно
 </div>
 
 <hr>
@@ -95,13 +95,13 @@
 <a href="{% url 'movie_detail' session.movie.id %}" class="btn">🎬 Назад к фильму</a>
 
 <div style="margin-top: 20px; padding: 10px; background: #e8f4fd; border-radius: 8px;">
-    <p><strong>ℹ️ Информация:</strong></p>
+    <p><strong>ℹ Информация:</strong></p>
     <ul>
         <li>Нажмите на <span style="color: #2ecc71; font-weight: bold;">зелёное место (○)</span>, чтобы выбрать его.</li>
         <li>Можно выбрать несколько мест одновременно.</li>
         <li>После выбора нажмите кнопку "Забронировать выбранные места".</li>
-        <li><span style="color: #e74c3c; font-weight: bold;">Красные места (❌)</span> уже подтверждены и недоступны для выбора.</li>
-        <li><span style="color: #f39c12; font-weight: bold;">Оранжевые места (⏳)</span> ожидают подтверждения администратора.</li>
+        <li><span style="color: #e74c3c; font-weight: bold;">Красные места ()</span> уже подтверждены и недоступны для выбора.</li>
+        <li><span style="color: #f39c12; font-weight: bold;">Оранжевые места ()</span> ожидают подтверждения администратора.</li>
         <li>Вы можете отменить бронирование в разделе <a href="{% url 'my_bookings' %}">"Мои бронирования"</a>.</li>
     </ul>
 </div>
@@ -141,14 +141,14 @@
                 seat.classList.add('occupied');
                 seat.style.background = '#e74c3c';
                 seat.style.color = 'white';
-                seat.innerHTML = '❌';
+                seat.innerHTML = '';
                 seat.style.cursor = 'not-allowed';
             } else if (pendingSeatsList.includes(seatKey)) {
                 // Ожидает - оранжевый
                 seat.classList.add('pending');
                 seat.style.background = '#f39c12';
                 seat.style.color = 'white';
-                seat.innerHTML = '⏳';
+                seat.innerHTML = '';
                 seat.style.cursor = 'not-allowed';
             } else if (selectedSeats.has(seatKey)) {
                 // Выбрано - жёлтый
@@ -208,11 +208,11 @@
 
             // Нельзя выбирать занятые или ожидающие места
             if (occupiedSeatsList.includes(seatKey)) {
-                alert('❌ Это место уже подтверждено!');
+                alert(' Это место уже подтверждено!');
                 return;
             }
             if (pendingSeatsList.includes(seatKey)) {
-                alert('⏳ Это место ожидает подтверждения администратора!');
+                alert(' Это место ожидает подтверждения администратора!');
                 return;
             }
 
