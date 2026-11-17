@@ -18,5 +18,3 @@ Do not migrate or import during builds. Fixture contains password hashes: keep p
 backups/before-deploy.sqlite3: original snapshot.
 backups/deploy-clone.sqlite3: fresh schema populated from fixture; all 143 serialized objects verified identical, including hashes. Login sessions excluded intentionally.
 Historical booking prices remain NULL because old code never persisted them. New bookings save price and discount.
-Fresh migrations are verified. Old Railway schemas with different histories need separate inspection.
-Revoke old published Railway credentials in Railway separately.
