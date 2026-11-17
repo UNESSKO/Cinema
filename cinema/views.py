@@ -284,6 +284,8 @@ def session_detail(request, pk):
         'pending_seats_json': pending_seats_json,
         'hall': session.hall,
         'rows_range': rows_range,
+        'seat_rows': [{'number': row, 'seats': list(range(1, min(20, session.hall.capacity - (row - 1) * 20) + 1))} for row in rows_range],
+        'unit_price_cents': int(discounted_price * 100),
         'seats_range': seats_range,
         'rows_count': rows_count,
         'seats_per_row': seats_per_row,
