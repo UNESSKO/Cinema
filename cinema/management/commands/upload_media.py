@@ -4,10 +4,10 @@ from django.core.files.storage import default_storage
 from django.core.management.base import BaseCommand, CommandError
 
 class Command(BaseCommand):
-    help = 'Upload local media to configured S3, preserving database paths.'
+    help = 'Upload local media to Vercel Blob, preserving database paths.'
     def handle(self, *args, **options):
-        if not settings.STORAGES['default']['BACKEND'].startswith('storages.backends.s3'):
-            raise CommandError('Configure S3 first.')
+        if not settings.STORAGES['default']['BACKEND'] == 'cinema.storage.VercelBlobStorage':
+            raise CommandError('Set BLOB_READ_WRITE_TOKEN in .env first.')
         count = 0
         for path in (settings.BASE_DIR / 'media').rglob('*'):
             if not path.is_file():

@@ -155,16 +155,7 @@ STORAGES = {
     'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
     'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
 }
-if os.environ.get('AWS_STORAGE_BUCKET_NAME'):
-    STORAGES['default'] = {
-        'BACKEND': 'storages.backends.s3.S3Storage',
-        'OPTIONS': {
-            'bucket_name': os.environ['AWS_STORAGE_BUCKET_NAME'],
-            'endpoint_url': os.environ.get('AWS_S3_ENDPOINT_URL') or None,
-            'region_name': os.environ.get('AWS_S3_REGION_NAME', 'us-east-1'),
-            'default_acl': None,
-            'file_overwrite': False,
-        },
-    }
+if os.environ.get('BLOB_READ_WRITE_TOKEN'):
+    STORAGES['default'] = {'BACKEND': 'cinema.storage.VercelBlobStorage'}
 elif PRODUCTION:
-    raise ImproperlyConfigured('AWS_STORAGE_BUCKET_NAME is required in production')
+    raise ImproperlyConfigured('BLOB_READ_WRITE_TOKEN is required in production')

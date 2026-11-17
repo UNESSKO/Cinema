@@ -43,3 +43,26 @@ class BookingTests(TestCase):
         self.assertEqual(booking.price_at_booking, Decimal('100.00'))
         booking.save()
         self.assertEqual(Ticket.objects.filter(booking=booking).count(), 1)
+
+
+class BlobStorageTests(TestCase):
+    def test_upload_keeps_database_path_and_public_access(self):
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        from django.core.files.base import ContentFile
+        from .storage import VercelBlobStorage
+        with patch('cinema.storage.blob.put_blob', return_value=SimpleNamespace(pathname='posters/test.jpg')) as put:
+            name = VercelBlobStorage()._save('posters/test.jpg', ContentFile(b'image'))
+        self.assertEqual(name, 'posters/test.jpg')
+        self.assertEqual(put.call_args.kwargs['access'], 'public')
+        self.assertFalse(put.call_args.kwargs['allow_overwrite'])
+
+    def test_missing_object_is_not_a_network_error(self):
+        from unittest.mock import patch
+        from .storage import VercelBlobStorage
+        from vercel.blob.errors import BlobNotFoundError
+        with patch('cinema.storage.blob.head_blob', side_effect=BlobNotFoundError('missing')):
+            self.assertFalse(VercelBlobStorage().exists('missing.jpg'))
+        with patch('cinema.storage.blob.head_blob', side_effect=ConnectionError('offline')):
+            with self.assertRaises(ConnectionError):
+                VercelBlobStorage().exists('missing.jpg')
