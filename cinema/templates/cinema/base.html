@@ -14,7 +14,9 @@
             <a href="{% url 'movie_list' %}">Афиша</a>
             <a href="{% url 'director_list' %}"> Режиссёры</a>
             <a href="{% url 'session_list' %}"> Сеансы</a>
+            {% if user.is_staff or user.is_superuser %}
             <a href="{% url 'hall_list' %}"> Залы</a>
+            {% endif %}
             <a href="{% url 'promotion_list' %}"> Акции</a>
             {% if user.is_authenticated %}
                 <a href="{% url 'my_bookings' %}">Мои билеты</a>
