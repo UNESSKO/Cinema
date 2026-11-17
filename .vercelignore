@@ -1,0 +1,9 @@
+.venv
+.git
+.idea
+backups
+*.sqlite3
+datadump.json
+.env
+.env.*
+media

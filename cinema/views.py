@@ -1,3 +1,4 @@
+from django.db import IntegrityError, transaction
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -174,8 +175,6 @@ def review_delete(request, pk):
 # ==================== БРОНИРОВАНИЕ МЕСТ ====================
 
 @login_required
-@login_required
-@login_required
 def session_detail(request, pk):
     session = get_object_or_404(Session, pk=pk)
 
@@ -194,7 +193,7 @@ def session_detail(request, pk):
 
     # Вычисляем количество рядов
     seats_per_row = 20
-    rows_count = session.hall.capacity // seats_per_row
+    rows_count = session.hall.get_rows_count()
     rows_range = list(range(1, rows_count + 1))
     seats_range = list(range(1, seats_per_row + 1))
 
@@ -207,7 +206,7 @@ def session_detail(request, pk):
         selected_seats_str = request.POST.get('selected_seats', '')
 
         if selected_seats_str:
-            selected_seats = selected_seats_str.split(',')
+            selected_seats = list(dict.fromkeys(selected_seats_str.split(',')))
             booked_count = 0
             errors = []
 
@@ -232,7 +231,7 @@ def session_detail(request, pk):
                     )
                     booked_count += 1
 
-                except (ValueError, IndexError):
+                except (ValueError, IndexError, ValidationError, IntegrityError):
                     errors.append(f"Некорректные данные места: {seat_key}")
 
             if booked_count > 0:

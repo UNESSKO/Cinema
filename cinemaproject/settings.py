@@ -12,41 +12,34 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
-import pymysql
-
-pymysql.install_as_MySQLdb()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
+import dj_database_url
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ar#vcx3mtql06%_%g&w_*%1%^%)2^wmzbkmf=3mifn=ua_99d$'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = ['*']
-
-CSRF_TRUSTED_ORIGINS = [
-    'https://*.railway.app',
-    'https://*.onrender.com',
-    'https://*.up.railway.app',
-    'http://localhost:8000',
-    'https://cinema-production-4610.up.railway.app',
-]
-
-# CSRF Cookie настройки
-CSRF_COOKIE_SECURE = True
-CSRF_COOKIE_HTTPONLY = False
-CSRF_USE_SESSIONS = False
+load_dotenv(BASE_DIR / '.env')
+PRODUCTION = os.environ.get('VERCEL') == '1' or os.environ.get('DJANGO_PRODUCTION') == '1'
+DEBUG = not PRODUCTION
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY:
+    if PRODUCTION:
+        raise ImproperlyConfigured('DJANGO_SECRET_KEY is required')
+    SECRET_KEY = 'local-development-only-do-not-use-in-production'
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
+for hostname in (os.environ.get('VERCEL_URL'), os.environ.get('VERCEL_PROJECT_PRODUCTION_URL')):
+    if hostname and hostname not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(hostname)
+CSRF_TRUSTED_ORIGINS = [v for v in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if v]
+CSRF_COOKIE_SECURE = PRODUCTION
+SESSION_COOKIE_SECURE = PRODUCTION
+SECURE_SSL_REDIRECT = PRODUCTION
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_HSTS_SECONDS = 31536000 if PRODUCTION else 0
 CSRF_COOKIE_SAMESITE = 'Lax'
-
-# Session настройки
-SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 
 # Application definition
@@ -63,8 +56,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -97,27 +90,12 @@ WSGI_APPLICATION = 'cinemaproject.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('MYSQL_DATABASE', 'railway'),
-        'USER': os.environ.get('MYSQLUSER', 'root'),
-        'PASSWORD': os.environ.get('MYSQLPASSWORD', 'PaRxWFEbRKcefDsrGUqFxQGiESzBMlxM'),
-        'HOST': os.environ.get('MYSQLHOST', 'mysql.railway.internal'),
-        'PORT': os.environ.get('MYSQLPORT', '3306'),
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'", # Рекомендуемая настройка
-            'charset': 'utf8mb4',
-        }
-    }
-}
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if PRODUCTION and not DATABASE_URL:
+    raise ImproperlyConfigured('DATABASE_URL is required in production')
+DATABASES = {'default': dj_database_url.parse(DATABASE_URL, conn_max_age=0, ssl_require=PRODUCTION) if DATABASE_URL else {
+    'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3',
+}}
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -173,3 +151,20 @@ AUTH_USER_MODEL = 'cinema.User'
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
+if os.environ.get('AWS_STORAGE_BUCKET_NAME'):
+    STORAGES['default'] = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {
+            'bucket_name': os.environ['AWS_STORAGE_BUCKET_NAME'],
+            'endpoint_url': os.environ.get('AWS_S3_ENDPOINT_URL') or None,
+            'region_name': os.environ.get('AWS_S3_REGION_NAME', 'us-east-1'),
+            'default_acl': None,
+            'file_overwrite': False,
+        },
+    }
+elif PRODUCTION:
+    raise ImproperlyConfigured('AWS_STORAGE_BUCKET_NAME is required in production')

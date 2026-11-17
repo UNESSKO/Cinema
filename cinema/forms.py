@@ -71,23 +71,15 @@ class BookingForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
     def clean(self):
-        cleaned_data = super().clean()
-        seat_row = cleaned_data.get('seat_row')
-        seat_number = cleaned_data.get('seat_number')
-
-        if self.session and seat_row and seat_number:
-            # Проверяем, не забронировано ли уже место
-            if Booking.objects.filter(session=self.session, seat_row=seat_row, seat_number=seat_number,
-                                      status='confirmed').exists():
-                raise forms.ValidationError('Это место уже забронировано или куплено!')
-
-            # Проверяем, существует ли такой ряд и место в зале
-            if seat_row < 1 or seat_row > 10:  # Максимум 10 рядов
-                raise forms.ValidationError('Неверный номер ряда (1-10)')
-            if seat_number < 1 or seat_number > 15:  # Максимум 15 мест в ряду
-                raise forms.ValidationError('Неверный номер места (1-15)')
-
-        return cleaned_data
+        cleaned = super().clean()
+        row, seat = cleaned.get('seat_row'), cleaned.get('seat_number')
+        if self.session and row is not None and seat is not None:
+            booking = Booking(session=self.session, seat_row=row, seat_number=seat)
+            booking.clean()
+            if Booking.objects.filter(session=self.session, seat_row=row, seat_number=seat,
+                                      status__in=['pending', 'confirmed']).exists():
+                raise forms.ValidationError('Это место уже занято.')
+        return cleaned
 
 class PromotionForm(forms.ModelForm):
     class Meta:

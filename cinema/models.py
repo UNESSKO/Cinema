@@ -1,4 +1,5 @@
-from django.db import models
+from django.db import models, transaction
+from decimal import Decimal
 from django.contrib.auth.models import AbstractUser
 from django.urls import reverse
 from django.core.exceptions import ValidationError
@@ -121,7 +122,7 @@ class Hall(models.Model):
         return f'Зал {self.number}'
 
     def get_rows_count(self):
-        return self.capacity // 20
+        return (self.capacity + 19) // 20
 
     def get_seats_per_row(self):
         return 20
@@ -167,8 +168,8 @@ class Session(models.Model):
         promotion = self.get_active_promotion()
         if promotion:
             discount = promotion.discount_percent
-            return float(self.price) * (1 - discount / 100)
-        return float(self.price)
+            return (self.price * (Decimal(100) - Decimal(discount)) / Decimal(100)).quantize(Decimal('0.01'))
+        return self.price
 
     def delete(self, *args, **kwargs):
         # Отменяем все активные бронирования перед удалением
@@ -200,31 +201,37 @@ class Booking(models.Model):
     def __str__(self):
         return f'Бронь {self.id}: {self.user.username} - {self.session.movie.title} (ряд {self.seat_row}, место {self.seat_number}) - {self.get_status_display()}'
 
-    def save(self, *args, **kwargs):
-        # При создании бронирования сохраняем цену со скидкой
-        if not self.pk and self.session:
-            self.price_at_booking = self.session.get_discounted_price()
-            promotion = self.session.get_active_promotion()
-            if promotion:
-                self.discount_applied = promotion.discount_percent
-        super().save(*args, **kwargs)
+    price_at_booking = models.DecimalField(max_digits=8, decimal_places=2, null=True, editable=False)
+    discount_applied = models.IntegerField(default=0, editable=False)
+
+    def clean(self):
+        super().clean()
+        if self.session_id:
+            capacity = self.session.hall.capacity
+            if self.seat_row < 1 or not 1 <= self.seat_number <= 20 or (self.seat_row - 1) * 20 + self.seat_number > capacity:
+                raise ValidationError('Несуществующее место в зале.')
+            if self._state.adding and self.session.start_time <= timezone.now():
+                raise ValidationError('Бронирование прошедшего сеанса невозможно.')
 
     def save(self, *args, **kwargs):
-        # Если статус меняется на confirmed и билета ещё нет, создаём билет
-        if self.pk:
-            old_status = Booking.objects.get(pk=self.pk).status
-            if old_status != 'confirmed' and self.status == 'confirmed':
-                # Создаём билет
-                Ticket.objects.get_or_create(
-                    booking=self,
-                    defaults={'qr_code': str(uuid.uuid4())[:8].upper()}
-                )
-        super().save(*args, **kwargs)
+        with transaction.atomic():
+            if self._state.adding:
+                self.clean()
+                self.price_at_booking = self.session.get_discounted_price()
+                promotion = self.session.get_active_promotion()
+                self.discount_applied = promotion.discount_percent if promotion else 0
+            super().save(*args, **kwargs)
+            if self.status == 'confirmed':
+                Ticket.objects.get_or_create(booking=self)
 
     class Meta:
         verbose_name = 'Бронирование'
         verbose_name_plural = 'Бронирования'
-        unique_together = ('session', 'seat_row', 'seat_number')
+        constraints = [models.UniqueConstraint(
+            fields=['session', 'seat_row', 'seat_number'],
+            condition=models.Q(status__in=['pending', 'confirmed']),
+            name='unique_active_booking_seat',
+        )]
 
 
 class Ticket(models.Model):
