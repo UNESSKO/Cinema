@@ -1,4 +1,5 @@
-from datetime import date, time
+from django.contrib.auth.views import redirect_to_login
+from datetime import date, time, timedelta
 from io import BytesIO
 from django.http import HttpResponse
 from django.urls import reverse
@@ -56,7 +57,9 @@ def movie_list(request):
     if session_filters:
         movies = movies.filter(**session_filters)
     return render(request, 'cinema/movie_list.html', {
-        'movies': movies.distinct(), 'genres': Genre.objects.all(),
+        'movies': movies.distinct().prefetch_related('genres', 'sessions'), 'genres': Genre.objects.all(),
+        'date_tabs': [(timezone.localdate() + timedelta(days=i)).isoformat() for i in range(4)],
+        'now': timezone.now(),
         'filters': {'q': query, 'genre': genre, 'date': day, 'time': start},
     })
 
@@ -202,8 +205,9 @@ def review_delete(request, pk):
 
 # ==================== БРОНИРОВАНИЕ МЕСТ ====================
 
-@login_required
 def session_detail(request, pk):
+    if request.method == 'POST' and not request.user.is_authenticated:
+        return redirect_to_login(request.get_full_path())
     session = get_object_or_404(Session, pk=pk)
 
     # Получаем активную акцию

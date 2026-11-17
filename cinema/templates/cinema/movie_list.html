@@ -1,7 +1,9 @@
 {% extends 'cinema/base.html' %}
 {% block title %}Афиша{% endblock %}
 {% block content %}
-<h1>Афиша</h1>
+<section class="cinema-hero"><div><p class="eyebrow">ВАШ ВЕЧЕР В КИНО</p><h1>Кино начинается здесь</h1><p>Выберите фильм и удобный сеанс.<br>Остальное — магия большого экрана.</p></div><div class="hero-art" aria-hidden="true"><span>C</span><small>БОЛЬШЕ, ЧЕМ ПРОСТО ФИЛЬМ</small></div></section>
+<div class="afisha-heading"><h2>Сейчас в кино</h2><span>Истории, которые стоит увидеть</span></div>
+<div class="date-tabs"><a href="?{% if filters.q %}q={{ filters.q|urlencode }}&amp;{% endif %}{% if filters.genre %}genre={{ filters.genre }}&amp;{% endif %}{% if filters.time %}time={{ filters.time }}{% endif %}" {% if not filters.date %}class="active"{% endif %}>Все даты</a>{% for day in date_tabs %}<a href="?date={{ day }}&amp;q={{ filters.q|urlencode }}&amp;genre={{ filters.genre }}&amp;time={{ filters.time }}" {% if filters.date == day %}class="active"{% endif %}>{% if forloop.first %}Сегодня{% elif forloop.counter == 2 %}Завтра{% else %}{{ day|slice:'8:10' }}.{{ day|slice:'5:7' }}{% endif %}</a>{% endfor %}</div>
 <form method="get" class="movie-filters">
 <label>Название<input name="q" value="{{ filters.q }}" placeholder="Поиск фильма"></label>
 <label>Жанр<select name="genre"><option value="">Все жанры</option>{% for genre in genres %}<option value="{{ genre.pk }}" {% if filters.genre == genre.pk|stringformat:'s' %}selected{% endif %}>{{ genre.name }}</option>{% endfor %}</select></label>
@@ -13,8 +15,10 @@
 <div class="movie-grid">
 {% for movie in movies %}<article class="movie-card">
 <a href="{% url 'movie_detail' movie.pk %}">{% if movie.poster %}<img src="{{ movie.poster.url }}" alt="{{ movie.title }}" loading="lazy">{% endif %}<h2>{{ movie.title }}</h2></a>
-<p>{{ movie.release_year }} · {{ movie.duration_min }} мин ·  {{ movie.rating }}</p>
+<p class="movie-meta">{{ movie.release_year }} · {{ movie.duration_min }} мин</p><p class="movie-genres">{% for genre in movie.genres.all %}{{ genre.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p><p class="movie-rating">Рейтинг <strong>{{ movie.rating }}</strong></p>
 {% if movie.director %}<p>{{ movie.director.name }}</p>{% endif %}
+<div class="showtimes">{% for session in movie.sessions.all %}{% if session.start_time > now %}<a href="{% url 'session_detail' session.pk %}">{{ session.start_time|date:'d.m H:i' }}</a>{% endif %}{% endfor %}</div>
+<a class="btn movie-book" href="{% url 'movie_detail' movie.pk %}">Выбрать сеанс</a>
 {% if user.is_staff %}<a class="btn" href="{% url 'movie_edit' movie.pk %}">Изменить</a><a class="btn btn-danger" href="{% url 'movie_delete' movie.pk %}">Удалить</a>{% endif %}
 </article>{% empty %}<p>Фильмов по выбранным условиям нет.</p>{% endfor %}
 </div>

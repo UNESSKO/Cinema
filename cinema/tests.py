@@ -112,3 +112,18 @@ class ModerationTicketTests(BookingTests):
         self.assertContains(self.client.get('/?q=Test'), 'Test')
         self.assertNotContains(self.client.get('/?q=Other'), '>Test<')
         self.assertEqual(self.client.get('/?date=wrong').status_code, 200)
+
+
+class GuestBookingTests(BookingTests):
+    def test_guest_can_view_hall(self):
+        response = self.client.get(f'/sessions/{self.session.pk}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'booking-form')
+
+    def test_guest_post_redirects_to_login_without_booking(self):
+        from django.urls import reverse
+        url = reverse('session_detail', args=[self.session.pk])
+        response = self.client.post(url, {'selected_seats': '1_1'})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('login') + '?next=' + url)
+        self.assertEqual(Booking.objects.count(), 0)

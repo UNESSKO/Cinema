@@ -8,15 +8,16 @@
     <link rel="stylesheet" href="{% static 'cinema/style.css' %}">
 </head>
 <body>
-    <nav>
+    <nav class="site-nav" aria-label="Основная навигация">
+        <a class="brand" href="{% url 'movie_list' %}">CINEMA<span>Место для хорошего кино</span></a>
         <div>
-            <a href="{% url 'movie_list' %}"> Фильмы</a>
+            <a href="{% url 'movie_list' %}">Афиша</a>
             <a href="{% url 'director_list' %}"> Режиссёры</a>
             <a href="{% url 'session_list' %}"> Сеансы</a>
             <a href="{% url 'hall_list' %}"> Залы</a>
             <a href="{% url 'promotion_list' %}"> Акции</a>
             {% if user.is_authenticated %}
-                <a href="{% url 'my_bookings' %}"> Мои брони</a>
+                <a href="{% url 'my_bookings' %}">Мои билеты</a>
             {% endif %}
             {% if user.is_staff %}
                 <a href="{% url 'admin_panel' %}"> Админ-панель</a>
@@ -47,6 +48,7 @@
         {% endif %}
         {% block content %}{% endblock %}
     </div>
+    <footer class="site-footer"><a href="{% url 'movie_list' %}" class="footer-brand">CINEMA</a><span>Хорошие истории — на большом экране.</span><a href="{% url 'session_list' %}">Расписание сеансов</a></footer>
 <script>
 document.querySelectorAll('table').forEach(table => {
     const wrapper = document.createElement('div');
